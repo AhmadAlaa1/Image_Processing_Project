@@ -1,0 +1,83 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: #06080f;
+  color: #e5e7eb;
+}
+.page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+header h1 { margin: 0 0 6px 0; font-size: 28px; }
+header p { margin: 0 0 16px 0; color: #9ca3af; }
+.upload { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+.button {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.status { color: #10b981; font-weight: 600; }
+.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pane {
+  background: #0c111c;
+  border: 1px solid #111827;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 260px;
+}
+.pane h3 { margin: 0 0 10px 0; }
+.pane img { width: 100%; max-height: 400px; object-fit: contain; background: #0b1220; border-radius: 8px; }
+#info { margin-top: 8px; color: #cbd5e1; font-size: 13px; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(240, 1fr)); gap: 14px; margin-top: 18px; }
+.card {
+  background: #0c111c;
+  border: 1px solid #111827;
+  border-radius: 10px;
+  padding: 12px;
+}
+.card h4 { margin: 0 0 10px 0; color: #60a5fa; }
+.card button {
+  width: 100%;
+  margin: 4px 0;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: #1f2937;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+.card button:hover { background: #2563eb; color: white; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.fields label { font-size: 13px; color: #cbd5e1; }
+.fields input {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #1f2937;
+  background: #111827;
+  color: white;
+}
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+pre {
+  background: #090d16;
+  border: 1px solid #111827;
+  border-radius: 8px;
+  padding: 8px;
+  color: #9ca3af;
+  overflow: auto;
+  max-height: 200px;
+}
+canvas#histCanvas {
+  width: 100%;
+  border: 1px solid #111827;
+  border-radius: 8px;
+  background: #0b1220;
+  margin-top: 6px;
+}
+@media (max-width: 900px) {
+  .panes { grid-template-columns: 1fr; }
+  .controls { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+}
