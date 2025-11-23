@@ -8,117 +8,144 @@
 </head>
 <body>
   <div class="page">
-    <header>
-      <h1>Image Processing Studio</h1>
-      <p>Upload an image, then apply operations. All processing runs on the server with custom numpy code.</p>
+    <header class="topbar">
+      <div class="brand">
+        <div class="dot"></div>
+        <span>Toast Image Studio</span>
+      </div>
+      <div class="actions">
+        <label class="btn primary">
+          Load
+          <input type="file" id="fileInput" accept="image/*" hidden />
+        </label>
+        <button id="downloadBtn" class="btn ghost">Download</button>
+      </div>
     </header>
+    <p class="subtitle">Upload, tweak, and download. All processing runs locally on the server with custom numpy code.</p>
 
-    <section class="upload">
-      <label class="button">
-        Choose Image
-        <input type="file" id="fileInput" accept="image/*" hidden />
-      </label>
-      <span id="fileName">No file chosen</span>
-      <span id="status" class="status">Ready</span>
-    </section>
-
-    <section class="panes">
-      <div class="pane">
-        <h3>Original</h3>
-        <img id="original" alt="original" />
-      </div>
-      <div class="pane">
-        <h3>Processed</h3>
-        <img id="processed" alt="processed" />
-        <div id="info"></div>
-      </div>
-    </section>
-
-    <section class="controls">
-      <div class="card">
-        <h4>Convert</h4>
-        <button data-action="grayscale">Grayscale</button>
-        <button data-action="binary">Binary (avg threshold)</button>
-      </div>
-
-      <div class="card">
-        <h4>Affine</h4>
-        <div class="fields">
-          <label>tx <input id="tx" type="number" value="30" /></label>
-          <label>ty <input id="ty" type="number" value="30" /></label>
+    <section class="workspace">
+      <div class="column side">
+        <div class="tool-group">
+          <h5>Convert</h5>
+          <div class="btn-row">
+            <button data-action="grayscale">Grayscale</button>
+            <button data-action="binary">Binary</button>
+          </div>
         </div>
-        <button data-action="translate">Translate</button>
-        <div class="fields">
-          <label>sx <input id="sx" type="number" step="0.1" value="1.2" /></label>
-          <label>sy <input id="sy" type="number" step="0.1" value="1.2" /></label>
+
+        <div class="tool-group">
+          <h5>Affine</h5>
+          <div class="field-row">
+            <label>tx <input id="tx" type="number" value="30" /></label>
+            <label>ty <input id="ty" type="number" value="30" /></label>
+          </div>
+          <div class="btn-row">
+            <button data-action="translate">Translate</button>
+          </div>
+          <div class="field-row">
+            <label>sx <input id="sx" type="number" step="0.1" value="1.2" /></label>
+            <label>sy <input id="sy" type="number" step="0.1" value="1.2" /></label>
+          </div>
+          <div class="btn-row">
+            <button data-action="scale">Scale</button>
+          </div>
+          <div class="field-row">
+            <label>angle <input id="angle" type="number" value="20" /></label>
+            <label>shx <input id="shx" type="number" step="0.1" value="0.2" /></label>
+            <label>shy <input id="shy" type="number" step="0.1" value="0.2" /></label>
+          </div>
+          <div class="btn-row">
+            <button data-action="rotate">Rotate</button>
+            <button data-action="shear_x">Shear X</button>
+            <button data-action="shear_y">Shear Y</button>
+          </div>
         </div>
-        <button data-action="scale">Scale</button>
-        <div class="fields">
-          <label>angle <input id="angle" type="number" value="20" /></label>
+
+        <div class="tool-group">
+          <h5>Resize</h5>
+          <div class="field-row">
+            <label>w <input id="newW" type="number" value="320" /></label>
+            <label>h <input id="newH" type="number" value="240" /></label>
+          </div>
+          <div class="btn-row">
+            <button data-action="resize_nearest">Nearest</button>
+            <button data-action="resize_bilinear">Bilinear</button>
+            <button data-action="resize_bicubic">Bicubic</button>
+          </div>
         </div>
-        <button data-action="rotate">Rotate</button>
-        <div class="fields">
-          <label>shx <input id="shx" type="number" step="0.1" value="0.2" /></label>
-          <label>shy <input id="shy" type="number" step="0.1" value="0.2" /></label>
+
+        <div class="tool-group">
+          <h5>Crop</h5>
+          <div class="field-row">
+            <label>x <input id="cropX" type="number" value="10" /></label>
+            <label>y <input id="cropY" type="number" value="10" /></label>
+            <label>w <input id="cropW" type="number" value="200" /></label>
+            <label>h <input id="cropH" type="number" value="200" /></label>
+          </div>
+          <div class="btn-row">
+            <button data-action="crop">Crop</button>
+          </div>
         </div>
-        <button data-action="shear_x">Shear X</button>
-        <button data-action="shear_y">Shear Y</button>
       </div>
 
-      <div class="card">
-        <h4>Resize</h4>
-        <div class="fields">
-          <label>w <input id="newW" type="number" value="320" /></label>
-          <label>h <input id="newH" type="number" value="240" /></label>
+      <div class="stage">
+        <div class="pane hero center">
+          <div class="pane-head">
+            <div class="stage-meta">
+              <h3>Stage</h3>
+              <span id="fileName" class="filename">No file chosen</span>
+            </div>
+            <div class="stage-controls">
+              <button id="showOriginalBtn" class="pill">Original</button>
+              <button id="showProcessedBtn" class="pill active">Processed</button>
+            </div>
+          </div>
+          <img id="stageImage" alt="stage" />
+          <div class="stage-footer">
+            <span id="status" class="status">Ready</span>
+            <span id="info"></span>
+          </div>
         </div>
-        <button data-action="resize_nearest">Nearest</button>
-        <button data-action="resize_bilinear">Bilinear</button>
-        <button data-action="resize_bicubic">Bicubic</button>
       </div>
 
-      <div class="card">
-        <h4>Crop</h4>
-        <div class="fields">
-          <label>x <input id="cropX" type="number" value="10" /></label>
-          <label>y <input id="cropY" type="number" value="10" /></label>
-          <label>w <input id="cropW" type="number" value="200" /></label>
-          <label>h <input id="cropH" type="number" value="200" /></label>
+      <div class="column side">
+        <div class="tool-group">
+          <h5>Histogram</h5>
+          <div class="btn-row">
+            <button data-action="histogram">Compute</button>
+            <button data-action="equalize">Equalize</button>
+          </div>
+          <canvas id="histCanvas" width="256" height="120"></canvas>
+          <pre id="histInfo"></pre>
         </div>
-        <button data-action="crop">Crop</button>
-      </div>
 
-      <div class="card">
-        <h4>Histogram</h4>
-        <button data-action="histogram">Compute</button>
-        <button data-action="equalize">Equalize</button>
-        <canvas id="histCanvas" width="256" height="120"></canvas>
-        <pre id="histInfo"></pre>
-      </div>
-
-      <div class="card">
-        <h4>Filters</h4>
-        <button data-action="gaussian">Gaussian 19×19</button>
-        <button data-action="median">Median 7×7</button>
-        <button data-action="laplacian">Laplacian</button>
-        <button data-action="sobel">Sobel</button>
-        <button data-action="gradient">Gradient</button>
-      </div>
-
-      <div class="card">
-        <h4>Compression</h4>
-        <div class="grid">
-          <button data-action="huffman">Huffman</button>
-          <button data-action="golomb">Golomb–Rice</button>
-          <button data-action="arithmetic">Arithmetic</button>
-          <button data-action="lzw">LZW</button>
-          <button data-action="rle">RLE</button>
-          <button data-action="symbol">Symbol</button>
-          <button data-action="bitplane">Bit-plane</button>
-          <button data-action="dct">DCT</button>
-          <button data-action="predictive">Predictive</button>
-          <button data-action="wavelet">Wavelet</button>
+        <div class="tool-group">
+          <h5>Filters</h5>
+          <div class="btn-row wrap">
+            <button data-action="gaussian">Gaussian</button>
+            <button data-action="median">Median</button>
+            <button data-action="laplacian">Laplacian</button>
+            <button data-action="sobel">Sobel</button>
+            <button data-action="gradient">Gradient</button>
+          </div>
         </div>
-        <pre id="compInfo"></pre>
+
+        <div class="tool-group">
+          <h5>Compression</h5>
+          <div class="btn-grid">
+            <button data-action="huffman">Huffman</button>
+            <button data-action="golomb">Golomb–Rice</button>
+            <button data-action="arithmetic">Arithmetic</button>
+            <button data-action="lzw">LZW</button>
+            <button data-action="rle">RLE</button>
+            <button data-action="symbol">Symbol</button>
+            <button data-action="bitplane">Bit-plane</button>
+            <button data-action="dct">DCT</button>
+            <button data-action="predictive">Predictive</button>
+            <button data-action="wavelet">Wavelet</button>
+          </div>
+          <pre id="compInfo"></pre>
+        </div>
       </div>
     </section>
   </div>

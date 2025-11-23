@@ -1,5 +1,6 @@
-const originalImg = document.getElementById("original");
-const processedImg = document.getElementById("processed");
+const stageImage = document.getElementById("stageImage");
+const originalImg = document.getElementById("original") || new Image(); // legacy ids not used in layout
+const processedImg = document.getElementById("processed") || new Image();
 const fileName = document.getElementById("fileName");
 const statusEl = document.getElementById("status");
 const histInfo = document.getElementById("histInfo");
@@ -8,6 +9,7 @@ const infoBox = document.getElementById("info");
 const histCanvas = document.getElementById("histCanvas");
 let histCtx = histCanvas?.getContext("2d");
 let imageDataUrl = null;
+let lastMode = "processed"; // or "original"
 
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
@@ -76,6 +78,9 @@ async function sendAction(action, params = {}) {
     if (!res.ok) throw new Error(data.error || "Server error");
     if (data.image) {
       processedImg.src = data.image;
+      if (lastMode === "processed") {
+        stageImage.src = data.image;
+      }
     }
     if (data.info) {
       const i = data.info;
@@ -108,11 +113,48 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
   imageDataUrl = await downscaleIfLarge(raw);
   originalImg.src = imageDataUrl;
   processedImg.src = "";
+  stageImage.src = imageDataUrl;
+  lastMode = "original";
   infoBox.textContent = "";
   histInfo.textContent = "";
   compInfo.textContent = "";
   setStatus("Image loaded.");
 });
+
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  const src = stageImage.src || processedImg.src || originalImg.src;
+  if (!src) {
+    setStatus("Nothing to download. Load or process an image first.", true);
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = src;
+  link.download = "processed.png";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
+
+const showOriginalBtn = document.getElementById("showOriginalBtn");
+const showProcessedBtn = document.getElementById("showProcessedBtn");
+if (showOriginalBtn && showProcessedBtn) {
+  showOriginalBtn.addEventListener("click", () => {
+    if (originalImg.src) {
+      stageImage.src = originalImg.src;
+      lastMode = "original";
+      showOriginalBtn.classList.add("active");
+      showProcessedBtn.classList.remove("active");
+    }
+  });
+  showProcessedBtn.addEventListener("click", () => {
+    if (processedImg.src) {
+      stageImage.src = processedImg.src;
+      lastMode = "processed";
+      showProcessedBtn.classList.add("active");
+      showOriginalBtn.classList.remove("active");
+    }
+  });
+}
 
 // Wire buttons
 document.querySelectorAll("button[data-action]").forEach((btn) => {
