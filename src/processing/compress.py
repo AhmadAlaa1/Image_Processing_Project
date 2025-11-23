@@ -361,7 +361,7 @@ def predictive_decode(residual: np.ndarray):
 def haar_wavelet_transform(img: np.ndarray):
     gray = _to_gray_uint8(img).astype(np.float32)
     h, w = gray.shape
-    h2, w2 = h // 2, w // 2
+    h2, w2 = (h + 1) // 2, (w + 1) // 2  # ceil to handle odd sizes
     approx = np.zeros((h2, w2), dtype=np.float32)
     horiz = np.zeros_like(approx)
     vert = np.zeros_like(approx)
@@ -372,15 +372,16 @@ def haar_wavelet_transform(img: np.ndarray):
             b = gray[y, x + 1] if x + 1 < w else a
             c = gray[y + 1, x] if y + 1 < h else a
             d = gray[y + 1, x + 1] if (y + 1 < h and x + 1 < w) else a
-            avg = (a + b + c + d) / 4
-            approx[y // 2, x // 2] = avg
-            horiz[y // 2, x // 2] = (a + c - b - d) / 4
-            vert[y // 2, x // 2] = (a + b - c - d) / 4
-            diag[y // 2, x // 2] = (a - b - c + d) / 4
-    return approx, horiz, vert, diag
+            idx_y = y // 2
+            idx_x = x // 2
+            approx[idx_y, idx_x] = (a + b + c + d) / 4
+            horiz[idx_y, idx_x] = (a + c - b - d) / 4
+            vert[idx_y, idx_x] = (a + b - c - d) / 4
+            diag[idx_y, idx_x] = (a - b - c + d) / 4
+    return approx, horiz, vert, diag, (h, w)
 
 
-def haar_wavelet_inverse(approx, horiz, vert, diag):
+def haar_wavelet_inverse(approx, horiz, vert, diag, original_shape=None):
     h2, w2 = approx.shape
     h, w = h2 * 2, w2 * 2
     reconstructed = np.zeros((h, w), dtype=np.float32)
@@ -394,4 +395,8 @@ def haar_wavelet_inverse(approx, horiz, vert, diag):
             reconstructed[2 * y, 2 * x + 1] = b
             reconstructed[2 * y + 1, 2 * x] = c
             reconstructed[2 * y + 1, 2 * x + 1] = d
-    return np.clip(reconstructed, 0, 255)
+    reconstructed = np.clip(reconstructed, 0, 255)
+    if original_shape:
+        oh, ow = original_shape
+        return reconstructed[:oh, :ow]
+    return reconstructed

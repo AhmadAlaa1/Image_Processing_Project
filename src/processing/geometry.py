@@ -2,11 +2,12 @@ import math
 import numpy as np
 from processing import interp as interp_ops
 
-MAX_OUTPUT_PIXELS = 50_000_000  # allow larger outputs while still preventing runaway allocations
+MAX_OUTPUT_PIXELS = 50_000_000  # hard cap to prevent runaway allocations
 
 
 def apply_affine(img: np.ndarray, matrix: np.ndarray, output_shape=None, method: str = "bilinear") -> np.ndarray:
     """Apply custom affine transform using inverse mapping (vectorized sampling)."""
+    img = img.astype(np.float32, copy=False)
     h, w = img.shape[:2]
     if output_shape is None:
         out_h, out_w = h, w
@@ -26,7 +27,7 @@ def translate(img: np.ndarray, tx: float, ty: float) -> np.ndarray:
 
 def scale(img: np.ndarray, sx: float, sy: float) -> np.ndarray:
     mat = np.array([[sx, 0, 0], [0, sy, 0]], dtype=np.float32)
-    out_shape = (int(img.shape[0] * sy), int(img.shape[1] * sx))
+    out_shape = (int(round(img.shape[0] * sy)), int(round(img.shape[1] * sx)))
     if out_shape[0] <= 0 or out_shape[1] <= 0:
         raise ValueError("Scale produced non-positive dimensions.")
     if out_shape[0] * out_shape[1] > MAX_OUTPUT_PIXELS:

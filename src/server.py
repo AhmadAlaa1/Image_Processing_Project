@@ -71,6 +71,23 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if act == "scale":
         sx = float(params.get("sx", 1))
         sy = float(params.get("sy", 1))
+        # Guard overly large outputs by auto-adjusting scale.
+        target_w = max(1, int(round(img.shape[1] * sx)))
+        target_h = max(1, int(round(img.shape[0] * sy)))
+        target_pixels = target_w * target_h
+        limit = geometry.MAX_OUTPUT_PIXELS
+        if target_pixels > limit:
+            factor = (limit / target_pixels) ** 0.5
+            sx *= factor
+            sy *= factor
+            adj_w = max(1, int(round(img.shape[1] * sx)))
+            adj_h = max(1, int(round(img.shape[0] * sy)))
+            extra["scale_adjusted"] = {
+                "requested": (target_w, target_h),
+                "adjusted": (adj_w, adj_h),
+                "factor": round(factor, 3),
+                "max_pixels": limit,
+            }
         return geometry.scale(img, sx, sy), extra
     if act == "rotate":
         angle = float(params.get("angle", 0))
@@ -167,8 +184,8 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         extra.update({"ratio": data["ratio"]})
         return recon, extra
     if act == "wavelet":
-        approx, horiz, vert, diag = compress.haar_wavelet_transform(gray)
-        recon = compress.haar_wavelet_inverse(approx, horiz, vert, diag)
+        approx, horiz, vert, diag, orig_shape = compress.haar_wavelet_transform(gray)
+        recon = compress.haar_wavelet_inverse(approx, horiz, vert, diag, original_shape=orig_shape)
         extra.update({"approx_shape": list(approx.shape)})
         return recon, extra
 
