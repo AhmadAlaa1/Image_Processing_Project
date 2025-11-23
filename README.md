@@ -2,6 +2,7 @@
 
 Standalone Python GUI that demonstrates classic image processing and compression algorithms with custom, from-scratch implementations. Built only with `tkinter`, `cv2`, `numpy`, and `matplotlib`. A localhost browser UI is also available via Flask.
 
+<img src="Screenshot_20251123_021827.png">
 ## Features
 - Load and preview color images, with info panel (resolution, size, dtype).
 - Grayscale and binary conversion (threshold from average intensity, optimality note).
