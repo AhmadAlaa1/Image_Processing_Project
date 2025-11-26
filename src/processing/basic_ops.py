@@ -1,32 +1,22 @@
 import numpy as np
+import cv2
 
+def rgb_to_grayscale(img): #Fixed
+    r,g,b = img[:,:,0],img[:,:,1],img[:,:,2]
+    gamma = 1.04
+    r_const,g_const,b_const = 0.299,0.587,0.114
+    grayscale_image = r_const*r ** gamma + g_const*g ** gamma + b_const*b ** gamma  
+    return grayscale_image
 
-def rgb_to_grayscale(img: np.ndarray) -> np.ndarray:
-    """Convert RGB image to grayscale using luminance weights."""
-    if img.ndim == 2:
-        return img.copy()
-    r, g, b = img[..., 0], img[..., 1], img[..., 2]
-    gray = 0.299 * r + 0.587 * g + 0.114 * b
-    return gray.astype(np.float32)
-
-
-def grayscale_to_binary(gray: np.ndarray) -> tuple[np.ndarray, float]:
+def grayscale_to_binary(grayscale_image: np.ndarray) -> tuple[np.ndarray, float]:
     """Convert grayscale to binary using average intensity threshold."""
-    threshold = float(np.mean(gray))
-    binary = (gray >= threshold).astype(np.uint8) * 255
+    threshold = float(np.mean(grayscale_image))
+    binary = (grayscale_image >= threshold).astype(np.uint8) * 255
     return binary, threshold
 
 
-def crop(img: np.ndarray, x: int, y: int, width: int, height: int) -> np.ndarray:
-    """Crop image safely within bounds."""
-    h, w = img.shape[:2]
-    x_end = min(w, x + width)
-    y_end = min(h, y + height)
-    x = max(0, x)
-    y = max(0, y)
-    if x >= x_end or y >= y_end:
-        return img[0:1, 0:1].copy()
-    return img[y:y_end, x:x_end].copy()
+def crop(img, x, y, w, h): #Fixed
+    return img[y:y+h, x:x+w]
 
 
 def histogram(gray: np.ndarray) -> np.ndarray:

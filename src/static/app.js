@@ -6,6 +6,7 @@ const statusEl = document.getElementById("status");
 const histInfo = document.getElementById("histInfo");
 const compInfo = document.getElementById("compInfo");
 const infoBox = document.getElementById("info");
+const fileMeta = document.getElementById("fileMeta");
 const histCanvas = document.getElementById("histCanvas");
 let histCtx = histCanvas?.getContext("2d");
 let imageDataUrl = null;
@@ -23,6 +24,41 @@ function readFile(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function getImageDimensions(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = () => reject(new Error("Unable to read image dimensions."));
+    img.src = dataUrl;
+  });
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return "Unknown";
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const power = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** power;
+  const rounded = value >= 10 ? value.toFixed(0) : value.toFixed(1);
+  return `${rounded} ${units[power]}`;
+}
+
+function resolveFileType(file) {
+  if (file.type) return file.type;
+  const parts = file.name.split(".");
+  if (parts.length > 1) return parts.pop().toUpperCase();
+  return "Unknown";
+}
+
+function setFileMeta({ width, height, size, type }) {
+  if (!fileMeta) return;
+  if (!width || !height) {
+    fileMeta.textContent = "Resolution: — | Size: — | Type: —";
+    return;
+  }
+  fileMeta.textContent = `Resolution: ${width}x${height} | Size: ${formatBytes(size)} | Type: ${type}`;
 }
 
 function downscaleIfLarge(dataUrl, maxDim = 1400) {
@@ -108,17 +144,25 @@ async function sendAction(action, params = {}) {
 document.getElementById("fileInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  fileName.textContent = file.name;
-  const raw = await readFile(file);
-  imageDataUrl = await downscaleIfLarge(raw);
-  originalImg.src = imageDataUrl;
-  processedImg.src = "";
-  stageImage.src = imageDataUrl;
-  lastMode = "original";
-  infoBox.textContent = "";
-  histInfo.textContent = "";
-  compInfo.textContent = "";
-  setStatus("Image loaded.");
+  try {
+    fileName.textContent = file.name;
+    const raw = await readFile(file);
+    const { width, height } = await getImageDimensions(raw);
+    imageDataUrl = await downscaleIfLarge(raw);
+    originalImg.src = imageDataUrl;
+    processedImg.src = "";
+    stageImage.src = imageDataUrl;
+    lastMode = "original";
+    setFileMeta({ width, height, size: file.size, type: resolveFileType(file) });
+    infoBox.textContent = "";
+    histInfo.textContent = "";
+    compInfo.textContent = "";
+    setStatus("Image loaded.");
+  } catch (err) {
+    console.error(err);
+    setFileMeta({}); // reset meta display
+    setStatus("Failed to load image.", true);
+  }
 });
 
 document.getElementById("downloadBtn").addEventListener("click", () => {
