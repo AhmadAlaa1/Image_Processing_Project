@@ -55,7 +55,7 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if decode_meta.get("downsized"):
         extra["downsized_from"] = decode_meta["original_size"]
         extra["processed_size"] = decode_meta["new_size"]
-    gray = basic_ops.rgb_to_grayscale(img)
+    gray = basic_ops.ensure_grayscale(img)
     act = action.lower()
 
     if act == "grayscale":
@@ -100,9 +100,9 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         return geometry.shear_y(img, shy), extra
     if act.startswith("resize_"):
         method = act.split("_", 1)[1]
-        new_w = int(params.get("width", img.shape[1]))
-        new_h = int(params.get("height", img.shape[0]))
-        return interp.resize(img, new_w, new_h, method=method), extra
+        new_w = int(params.get("width", gray.shape[1]))
+        new_h = int(params.get("height", gray.shape[0]))
+        return interp.resize(gray, new_w, new_h, method=method), extra
     if act == "crop":
         return basic_ops.crop(img, int(params.get("x", 0)), int(params.get("y", 0)),
                               int(params.get("w", img.shape[1])), int(params.get("h", img.shape[0]))), extra
@@ -110,7 +110,7 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         hist = basic_ops.histogram(gray)
         extra["histogram"] = hist.tolist()
         extra["assessment"] = basic_ops.histogram_goodness(hist)
-        return img, extra
+        return gray, extra
     if act == "equalize":
         eq = basic_ops.histogram_equalization(gray)
         hist = basic_ops.histogram(eq)
@@ -118,9 +118,9 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         extra["assessment"] = basic_ops.histogram_goodness(hist)
         return eq, extra
     if act == "gaussian":
-        return filters.gaussian_blur(img, 19, 3.0), extra
+        return filters.gaussian_blur(gray, 19, 3.0), extra
     if act == "median":
-        return filters.median_filter(img, 7), extra
+        return filters.median_filter(gray, 7), extra
     if act == "laplacian":
         return filters.laplacian_filter(gray), extra
     if act == "sobel":
@@ -135,8 +135,7 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
             scale = (COMPRESSION_MAX_PIXELS / (h * w)) ** 0.5
             new_w = max(1, int(w * scale))
             new_h = max(1, int(h * scale))
-            img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-            gray = basic_ops.rgb_to_grayscale(img)
+            gray = cv2.resize(gray, (new_w, new_h), interpolation=cv2.INTER_AREA)
             extra["compression_downscaled_from"] = (w, h)
             extra["compression_size"] = (new_w, new_h)
 
