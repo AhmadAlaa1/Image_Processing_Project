@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def load_image(path: str) -> np.ndarray:
+def load_image(path: str):
     """Load image from disk as RGB float array."""
     img_bgr = cv2.imread(path, cv2.IMREAD_COLOR)
     if img_bgr is None:
@@ -11,13 +11,13 @@ def load_image(path: str) -> np.ndarray:
     return img_rgb.astype(np.float32)
 
 
-def ensure_uint8(img: np.ndarray) -> np.ndarray:
+def ensure_uint8(img):
     """Clip and convert to uint8 for display."""
     clipped = np.clip(img, 0, 255)
     return clipped.astype(np.uint8)
 
 
-def info(img: np.ndarray) -> dict:
+def info(img):
     """Return basic image info."""
     h, w = img.shape[:2]
     channels = 1 if img.ndim == 2 else img.shape[2]

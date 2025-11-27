@@ -2,16 +2,12 @@ import numpy as np
 import cv2
 
 def rgb_to_grayscale(img): #Fixed
-    r,g,b = img[:,:,0],img[:,:,1],img[:,:,2]
-    gamma = 1.04
-    r_const,g_const,b_const = 0.299,0.587,0.114
-    grayscale_image = r_const*r ** gamma + g_const*g ** gamma + b_const*b ** gamma  
-    return grayscale_image
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY).astype(np.float32)
 
-def grayscale_to_binary(grayscale_image: np.ndarray) -> tuple[np.ndarray, float]:
+def grayscale_to_binary(grayscale_image):
     """Convert grayscale to binary using average intensity threshold."""
-    threshold = float(np.mean(grayscale_image))
-    binary = (grayscale_image >= threshold).astype(np.uint8) * 255
+    threshold = float(cv2.mean(grayscale_image)[0])
+    _, binary = cv2.threshold(grayscale_image.astype(np.float32), threshold, 255, cv2.THRESH_BINARY)
     return binary, threshold
 
 
@@ -19,16 +15,13 @@ def crop(img, x, y, w, h): #Fixed
     return img[y:y+h, x:x+w]
 
 
-def histogram(gray: np.ndarray) -> np.ndarray:
+def histogram(gray):
     """Compute histogram for grayscale image."""
-    hist = np.zeros(256, dtype=np.int32)
-    flat = gray.astype(np.uint8).ravel()
-    for val in flat:
-        hist[val] += 1
-    return hist
+    hist = cv2.calcHist([gray.astype(np.uint8)], [0], None, [256], [0, 256]).flatten()
+    return hist.astype(np.int32)
 
 
-def histogram_goodness(hist: np.ndarray) -> str:
+def histogram_goodness(hist):
     """Assess histogram spread."""
     total = np.sum(hist)
     if total == 0:
@@ -42,15 +35,7 @@ def histogram_goodness(hist: np.ndarray) -> str:
     return "Histogram is concentrated; consider equalization to improve contrast."
 
 
-def histogram_equalization(gray: np.ndarray) -> np.ndarray:
-    """Apply manual histogram equalization."""
-    hist = histogram(gray)
-    cdf = np.cumsum(hist)
-    cdf_masked = np.ma.masked_equal(cdf, 0)
-    cdf_min = cdf_masked.min()
-    total_pixels = gray.size
-    equalized = (cdf_masked - cdf_min) * 255.0 / (total_pixels - cdf_min)
-    equalized = np.ma.filled(equalized, 0).astype(np.uint8)
-    flat = gray.astype(np.uint8).ravel()
-    result_flat = equalized[flat]
-    return result_flat.reshape(gray.shape).astype(np.float32)
+def histogram_equalization(gray):
+    """Apply histogram equalization via OpenCV."""
+    gray_uint8 = np.clip(gray, 0, 255).astype(np.uint8)
+    return cv2.equalizeHist(gray_uint8).astype(np.float32)

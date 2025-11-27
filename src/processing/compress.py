@@ -1,13 +1,15 @@
 import math
 from collections import Counter
 import heapq
+import cv2
 import numpy as np
 
 
-def _to_gray_uint8(img: np.ndarray) -> np.ndarray:
+def _to_gray_uint8(img):
     if img.ndim == 3:
         # simple average for compression routines
         img = np.mean(img, axis=2)
+        return np.clip(img, 0, 255).astype(np.uint8)
     return np.clip(img, 0, 255).astype(np.uint8)
 
 
@@ -29,7 +31,7 @@ class _HuffNode:
         return self.freq < other.freq
 
 
-def _build_huffman_tree(data: np.ndarray) -> _HuffNode:
+def _build_huffman_tree(data):
     flat = data.ravel().tolist()
     freq = Counter(flat)
     heap = []
@@ -54,7 +56,7 @@ def _generate_codes(node: _HuffNode, prefix="", codes=None):
     return codes
 
 
-def huffman_compress(img: np.ndarray):
+def huffman_compress(img):
     gray = _to_gray_uint8(img)
     data = gray.ravel().tolist()
     tree = _build_huffman_tree(gray)
@@ -88,7 +90,7 @@ def huffman_decompress(bitstring: str, tree: _HuffNode, shape):
 
 
 # ---------------- Golomb-Rice Coding ---------------- #
-def golomb_rice_encode(img: np.ndarray, k: int = 2):
+def golomb_rice_encode(img, k: int = 2):
     gray = _to_gray_uint8(img)
     m = 1 << k
     bits = []
@@ -130,7 +132,7 @@ def golomb_rice_decode(bitstring: str, shape, k: int = 2):
 
 
 # ---------------- Arithmetic Coding (entropy-estimate demo) ---------------- #
-def arithmetic_encode(img: np.ndarray):
+def arithmetic_encode(img):
     gray = _to_gray_uint8(img)
     data = gray.ravel().tolist()
     freq = Counter(data)
@@ -157,7 +159,7 @@ def arithmetic_decode(code, meta):
 
 
 # ---------------- LZW Coding ---------------- #
-def lzw_encode(img: np.ndarray):
+def lzw_encode(img):
     gray = _to_gray_uint8(img)
     data = gray.ravel().tolist()
     dict_size = 256
@@ -207,7 +209,7 @@ def lzw_decode(codes, shape):
 
 
 # ---------------- Run Length Encoding ---------------- #
-def rle_encode(img: np.ndarray):
+def rle_encode(img):
     gray = _to_gray_uint8(img)
     data = gray.ravel()
     pairs = []
@@ -233,7 +235,7 @@ def rle_decode(pairs, shape):
 
 
 # ---------------- Symbol-based coding ---------------- #
-def symbol_based_encode(img: np.ndarray):
+def symbol_based_encode(img):
     gray = _to_gray_uint8(img)
     freq = Counter(gray.ravel().tolist())
     sorted_symbols = [s for s, _ in freq.most_common()]
@@ -271,7 +273,7 @@ def symbol_based_decode(bitstring: str, codes: dict, shape):
 
 
 # ---------------- Bit-plane coding ---------------- #
-def bit_planes(img: np.ndarray):
+def bit_planes(img):
     gray = _to_gray_uint8(img)
     planes = []
     for i in range(8):
@@ -295,37 +297,32 @@ DCT_MATRIX = _dct_matrix()
 DCT_MATRIX_T = DCT_MATRIX.T
 
 
-def dct_compress(img: np.ndarray, keep_ratio: float = 0.5):
+def dct_compress(img, keep_ratio: float = 0.5):
     gray = _to_gray_uint8(img)
     h, w = gray.shape
-    h8 = h - (h % 8)
-    w8 = w - (w % 8)
+    h8, w8 = h - (h % 8), w - (w % 8)
     gray = gray[:h8, :w8]
     reconstructed = np.zeros_like(gray, dtype=np.float32)
-    total_coeffs = 0
-    kept = 0
+    total_coeffs = kept = 0
     threshold = None
     for y in range(0, h8, 8):
         for x in range(0, w8, 8):
             block = gray[y:y+8, x:x+8].astype(np.float32) - 128
-            dct = DCT_MATRIX @ block @ DCT_MATRIX_T
+            dct = cv2.dct(block)
             flat = np.abs(dct).ravel()
             total_coeffs += flat.size
-            k = int(flat.size * keep_ratio)
-            if k <= 0:
-                k = 1
+            k = max(1, int(flat.size * keep_ratio))
             threshold = np.partition(flat, -k)[-k]
-            mask = np.abs(dct) >= threshold
-            kept += np.count_nonzero(mask)
+            mask = (np.abs(dct) >= threshold).astype(np.float32)
+            kept += int(np.count_nonzero(mask))
             dct_filtered = dct * mask
-            block_rec = (DCT_MATRIX_T @ dct_filtered @ DCT_MATRIX) + 128
+            block_rec = cv2.idct(dct_filtered) + 128
             reconstructed[y:y+8, x:x+8] = block_rec
-    compressed_bits = kept * 16  # coarse estimate
+    compressed_bits = kept * 16
     original_bits = gray.size * 8
-    ratio = _compression_ratio(original_bits, compressed_bits)
     return {
         "image": reconstructed,
-        "ratio": ratio,
+        "ratio": _compression_ratio(original_bits, compressed_bits),
         "kept_coefficients": kept,
         "total_coefficients": total_coeffs,
         "threshold": threshold,
@@ -333,7 +330,7 @@ def dct_compress(img: np.ndarray, keep_ratio: float = 0.5):
 
 
 # ---------------- Predictive coding (DPCM) ---------------- #
-def predictive_encode(img: np.ndarray):
+def predictive_encode(img):
     gray = _to_gray_uint8(img)
     residual = np.zeros_like(gray, dtype=np.int16)
     predictor = np.zeros_like(gray, dtype=np.uint8)
@@ -347,7 +344,7 @@ def predictive_encode(img: np.ndarray):
     return {"residual": residual, "predictor": predictor, "ratio": ratio}
 
 
-def predictive_decode(residual: np.ndarray):
+def predictive_decode(residual):
     h, w = residual.shape
     reconstructed = np.zeros((h, w), dtype=np.int16)
     for y in range(h):
@@ -358,7 +355,7 @@ def predictive_decode(residual: np.ndarray):
 
 
 # ---------------- Wavelet coding (Haar, 1 level) ---------------- #
-def haar_wavelet_transform(img: np.ndarray):
+def haar_wavelet_transform(img):
     gray = _to_gray_uint8(img).astype(np.float32)
     h, w = gray.shape
     h2, w2 = (h + 1) // 2, (w + 1) // 2  # ceil to handle odd sizes
