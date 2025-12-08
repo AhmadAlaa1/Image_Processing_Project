@@ -1,0 +1,2266 @@
+\documentclass[12pt,a4paper]{article}
+
+% ---------- Encoding & Fonts ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+% ---------- Page Layout ----------
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\setstretch{1.15}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% ---------- Colors & Links ----------
+\usepackage{xcolor}
+\definecolor{darkbg}{HTML}{EFF1F5}    % Catppuccin Latte base
+\definecolor{panelbg}{HTML}{E6E9EF}   % panels / code blocks (mantle)
+\definecolor{lightfg}{HTML}{4C4F69}   % primary text
+\definecolor{headingblue}{HTML}{1E66F5} % accent headings (blue)
+\definecolor{codegray}{HTML}{8C8FA1}  % comments/frames (overlay1)
+\definecolor{linkblue}{HTML}{179299}  % links/strings accent (teal)
+\usepackage{hyperref}
+\usepackage{amsmath}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=headingblue,
+    urlcolor=linkblue,
+    citecolor=headingblue
+}
+\usepackage{pagecolor}
+\pagecolor{darkbg}
+\color{lightfg}
+
+\usepackage{titlesec}
+\titleformat{\section}
+  {\Large\bfseries\color{headingblue}}
+  {\thesection}{0.6em}{}
+  [\color{headingblue}\titlerule]
+\titleformat{\subsection}
+  {\bfseries\color{lightfg}}
+  {\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}
+  {\itshape\color{lightfg}}
+  {\thesubsubsection}{0.45em}{}
+\titlespacing*{\section}{0pt}{10pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+% ---------- Lists ----------
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=*, topsep=4pt, itemsep=2pt}
+\setlist[enumerate]{leftmargin=*, topsep=4pt, itemsep=2pt}
+
+% ---------- Code Listings ----------
+\usepackage{listings}
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    basicstyle=\ttfamily\small\color{lightfg},
+    keywordstyle=\color{headingblue}\bfseries,
+    commentstyle=\color{codegray},
+    stringstyle=\color{linkblue},
+    showstringspaces=false,
+    columns=fullflexible,
+    frame=single,
+    rulecolor=\color{panelbg},
+    breaklines=true,
+    tabsize=4,
+    backgroundcolor=\color{panelbg}
+}
+\lstset{style=pythonstyle}
+
+% ---------- Title ----------
+\title{\textcolor{headingblue}{\textbf{Image Processing Studio}}\\\textcolor{lightfg}{Desktop UI and Compression Algorithms}\\\small\textcolor{lightfg}{(Code Walkthrough and Explanation)}}
+\author{\textcolor{lightfg}{Student Project — Tkinter + Flask + OpenCV}}
+\date{\textcolor{lightfg}{\today}}
+
+\begin{document}
+\pagenumbering{gobble}
+\begin{titlepage}
+    \centering
+    \vspace*{\fill}
+    {\Huge \textcolor{headingblue}{\textbf{Image Processing Studio}}\\[0.5cm]}
+    {\Large \textcolor{lightfg}{Desktop UI and Compression Algorithms}\\[0.35cm]}
+    {\large \textcolor{lightfg}{(Code Walkthrough and Explanation)}}\\[1.4cm]
+    {\large \textcolor{lightfg}{Student Project — Tkinter + Flask + OpenCV}}\\[0.35cm]
+    {\large \textcolor{lightfg}{\today}}\\[2.1cm]
+    \rule{0.75\textwidth}{1pt}\\[0.7cm]
+    {\small \textcolor{codegray}{This document walks through the UI flow, processing pipeline, and compression demos implemented with OpenCV-backed functions.}}
+    \vspace*{\fill}
+\end{titlepage}
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\begin{center}
+    \textbf{Quick Manual}\\[6pt]
+    \begin{itemize}[leftmargin=1.2cm]
+        \item \hyperref[sec:intro]{Introduction}
+        \item \hyperref[sec:ui]{Desktop UI Layer}
+        \item \hyperref[sec:processing]{Detailed Function Reference}
+        \item \hyperref[sec:compression]{Compression Algorithms}
+        \item \hyperref[sec:flow]{End-to-End Flow}
+    \end{itemize}
+    \vspace{6pt}
+    \tableofcontents
+\end{center}
+\clearpage
+
+% =====================================================
+% 1. INTRODUCTION
+% =====================================================
+
+\section{Introduction}\label{sec:intro}
+
+This document explains the desktop and backend parts of the \textbf{Image Processing Studio} project and the core image processing / compression algorithms behind it.
+
+The explanation is structured into three main layers:
+
+\begin{itemize}
+    \item \textbf{UI Layer (Tkinter + Matplotlib)}: Files \texttt{controls.py} and \texttt{preview.py}.
+    \item \textbf{Processing Layer}: Functions from the \texttt{processing} package:
+    \texttt{basic\_ops.py}, \texttt{filters.py}, \texttt{geometry.py}, \texttt{interp.py}, \texttt{io\_utils.py}, \texttt{compress.py}.
+    \item \textbf{Web API Layer (Flask)}: File \texttt{server.py} (optional web frontend).
+\end{itemize}
+
+The goal is to describe what each important function does, how the UI connects to the processing code, and the intuition behind the algorithms.
+
+% =====================================================
+% 2. DESKTOP UI LAYER (Tkinter)
+% =====================================================
+
+\section{Desktop UI Layer (Tkinter)}\label{sec:ui}
+
+The Tkinter-based desktop interface lives in \texttt{src/ui/controls.py} and \texttt{src/ui/preview.py}.
+
+\subsection{\texttt{ImageApp} Frame (controls.py)}
+
+\subsubsection*{Class Definition and Initialization}
+
+\begin{lstlisting}
+class ImageApp(ttk.Frame):
+    def __init__(self, root):
+        super().__init__(root, padding=10)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{ImageApp} inherits from \texttt{ttk.Frame} and acts as the main container for the whole desktop UI.
+    \item It is attached directly to the Tk root window (\texttt{root}) and uses padding around its contents.
+\end{itemize}
+
+\subsubsection*{Styling and Theme}
+
+\begin{lstlisting}
+root.configure(bg="#111827")
+self.style = ttk.Style()
+self.style.theme_use("clam")
+self.style.configure("TFrame", background="#111827")
+self.style.configure("TLabel", background="#111827",
+                     foreground="#e5e7eb")
+self.style.configure("TButton", background="#1f2937",
+                     foreground="#e5e7eb", padding=6)
+self.style.map("TButton",
+               background=[("active", "#2563eb")])
+\end{lstlisting}
+
+\begin{itemize}
+    \item The root window background is set to a dark color (\#111827).
+    \item A \texttt{ttk.Style} object is created and the \texttt{clam} theme is used as a base.
+    \item Default styles are customized:
+    \begin{itemize}
+        \item \texttt{TFrame} uses a dark background.
+        \item \texttt{TLabel} uses a dark background and light text.
+        \item \texttt{TButton} uses a dark background, light text, and padding.
+        \item The button background changes to blue (\#2563EB) when active (hover/press).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{State Variables and Layout Root}
+
+\begin{lstlisting}
+self.original_img = None
+self.processed_img = None
+self.binary_threshold = None
+
+self.grid(column=0, row=0, sticky="nsew")
+root.rowconfigure(0, weight=1)
+root.columnconfigure(0, weight=1)
+
+self._build_layout()
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{original\_img}: stores the image loaded from disk (NumPy array).
+    \item \texttt{processed\_img}: stores the latest processed result (grayscale, filtered, etc.).
+    \item \texttt{binary\_threshold}: stores the threshold used for grayscale-to-binary conversion.
+    \item The \texttt{ImageApp} frame is placed at grid cell (0,0) of the root window and is allowed to expand in all directions (\texttt{sticky="nsew"}).
+    \item \texttt{rowconfigure} and \texttt{columnconfigure} on the root let the frame grow when the window is resized.
+\end{itemize}
+
+The last call \texttt{\_build\_layout()} constructs all child widgets (buttons, entries, frames, etc.).
+
+\subsection{Layout Construction (\_build\_layout)}
+
+\begin{lstlisting}
+def _build_layout(self):
+    header = ttk.Label(self, text="Image Processing Studio",
+                       font=("Segoe UI", 18, "bold"))
+    header.grid(column=0, row=0, sticky="w", pady=(0, 6))
+\end{lstlisting}
+
+A title label is created at the top of the \texttt{ImageApp} frame.
+
+\subsubsection*{Main Container: Controls vs Preview}
+
+\begin{lstlisting}
+container = ttk.Frame(self)
+container.grid(column=0, row=1, sticky="nsew")
+container.columnconfigure(1, weight=1)
+container.rowconfigure(0, weight=1)
+
+controls = ttk.Frame(container, padding=8)
+controls.grid(column=0, row=0, sticky="ns")
+
+preview_frame = ttk.Frame(container)
+preview_frame.grid(column=1, row=0, sticky="nsew")
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{container} holds two sub-frames:
+    \begin{itemize}
+        \item \texttt{controls}: left column, vertical stack of sections.
+        \item \texttt{preview\_frame}: right column, where images and histograms are drawn.
+    \end{itemize}
+    \item The right column is configured with a positive weight so it grows when the window is resized.
+\end{itemize}
+
+\subsubsection*{Image Preview and Info Label}
+
+\begin{lstlisting}
+self.preview = ImagePreview(preview_frame)
+self.info_label = ttk.Label(preview_frame, text="No image loaded",
+                            anchor="center")
+self.info_label.pack(fill="x", pady=4)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{ImagePreview} (from \texttt{preview.py}) embeds a Matplotlib figure in Tkinter, with left and right axes.
+    \item \texttt{info\_label} displays basic information about the currently loaded image (size, channels, data type).
+\end{itemize}
+
+\subsection{Control Sections (Labelled Boxes)}
+
+The UI is organized into labelled groups using a helper function:
+
+\begin{lstlisting}
+def _labeled_box(self, parent, title: str):
+    box = ttk.LabelFrame(parent, text=title, padding=6)
+    box.configure(style="TFrame")
+    box.grid(column=0, row=parent.grid_size()[1],
+             sticky="ew", pady=6)
+    return box
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{ttk.LabelFrame} provides a border and title (e.g.\ ``Image I/O'', ``Affine Transforms'').
+    \item \texttt{parent.grid\_size()[1]} returns the current number of rows of the parent, so each new box is placed below the previous one automatically.
+\end{itemize}
+
+Each section is then built using this helper.
+
+\subsubsection*{Image I/O}
+
+\begin{lstlisting}
+file_box = self._labeled_box(controls, "Image I/O")
+ttk.Button(file_box, text="Load Image",
+           command=self.load_image).grid(...)
+self.image_path_var = tk.StringVar(value="No file chosen")
+ttk.Label(file_box, textvariable=self.image_path_var,
+          wraplength=180).grid(...)
+\end{lstlisting}
+
+\begin{itemize}
+    \item ``Load Image'' button triggers \texttt{self.load\_image}.
+    \item \texttt{image\_path\_var} holds the displayed file name.
+\end{itemize}
+
+\subsubsection*{Conversion (RGB $\rightarrow$ Grayscale/Binary)}
+
+\begin{lstlisting}
+conv_box = self._labeled_box(controls, "Convert")
+ttk.Button(conv_box, text="To Grayscale",
+           command=self.to_grayscale).grid(...)
+ttk.Button(conv_box, text="To Binary (avg threshold)",
+           command=self.to_binary).grid(...)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{To Grayscale}: converts the original RGB image to grayscale.
+    \item \textbf{To Binary}: converts grayscale to binary using the average intensity as threshold.
+\end{itemize}
+
+\subsubsection*{Affine Transforms (Translate, Scale, Rotate, Shear)}
+
+\begin{lstlisting}
+affine_box = self._labeled_box(controls, "Affine Transforms")
+
+self.tx_var = tk.DoubleVar(value=30)
+self.ty_var = tk.DoubleVar(value=30)
+ttk.Label(affine_box, text="tx, ty").grid(...)
+ttk.Entry(affine_box, textvariable=self.tx_var, width=6).grid(...)
+ttk.Entry(affine_box, textvariable=self.ty_var, width=6).grid(...)
+ttk.Button(affine_box, text="Translate",
+           command=self.translate).grid(...)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{tx\_var}, \texttt{ty\_var}: translation along x and y.
+    \item ``Translate'' button calls \texttt{self.translate}, which applies \texttt{geometry.translate}.
+\end{itemize}
+
+Scaling:
+
+\begin{lstlisting}
+self.sx_var = tk.DoubleVar(value=1.2)
+self.sy_var = tk.DoubleVar(value=1.2)
+ttk.Label(affine_box, text="sx, sy").grid(...)
+ttk.Entry(affine_box, textvariable=self.sx_var, width=6).grid(...)
+ttk.Entry(affine_box, textvariable=self.sy_var, width=6).grid(...)
+ttk.Button(affine_box, text="Scale",
+           command=self.scale).grid(...)
+\end{lstlisting}
+
+Rotation:
+
+\begin{lstlisting}
+self.angle_var = tk.DoubleVar(value=20)
+ttk.Label(affine_box, text="Angle").grid(...)
+ttk.Entry(affine_box, textvariable=self.angle_var, width=6).grid(...)
+ttk.Button(affine_box, text="Rotate",
+           command=self.rotate).grid(...)
+\end{lstlisting}
+
+Shear:
+
+\begin{lstlisting}
+self.shx_var = tk.DoubleVar(value=0.2)
+self.shy_var = tk.DoubleVar(value=0.2)
+ttk.Label(affine_box, text="shx, shy").grid(...)
+ttk.Entry(affine_box, textvariable=self.shx_var, width=6).grid(...)
+ttk.Entry(affine_box, textvariable=self.shy_var, width=6).grid(...)
+ttk.Button(affine_box, text="Shear X",
+           command=self.shear_x).grid(...)
+ttk.Button(affine_box, text="Shear Y",
+           command=self.shear_y).grid(...)
+\end{lstlisting}
+
+Each button calls a corresponding method that uses the geometry utilities.
+
+\subsubsection*{Interpolation / Resizing}
+
+\begin{lstlisting}
+interp_box = self._labeled_box(controls, "Interpolation")
+self.new_w = tk.IntVar(value=320)
+self.new_h = tk.IntVar(value=240)
+ttk.Label(interp_box, text="W, H").grid(...)
+ttk.Entry(interp_box, textvariable=self.new_w, width=6).grid(...)
+ttk.Entry(interp_box, textvariable=self.new_h, width=6).grid(...)
+
+ttk.Button(interp_box, text="Nearest",
+           command=lambda: self.resize("nearest")).grid(...)
+ttk.Button(interp_box, text="Bilinear",
+           command=lambda: self.resize("bilinear")).grid(...)
+ttk.Button(interp_box, text="Bicubic",
+           command=lambda: self.resize("bicubic")).grid(...)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Width and height are controlled by \texttt{new\_w} and \texttt{new\_h}.
+    \item The three buttons call \texttt{self.resize} with different interpolation methods.
+\end{itemize}
+
+\subsubsection*{Crop}
+
+\begin{lstlisting}
+crop_box = self._labeled_box(controls, "Crop")
+self.crop_x = tk.IntVar(value=10)
+self.crop_y = tk.IntVar(value=10)
+self.crop_w = tk.IntVar(value=200)
+self.crop_h = tk.IntVar(value=200)
+
+for idx, (lbl, var) in enumerate([("x", self.crop_x),
+                                  ("y", self.crop_y),
+                                  ("w", self.crop_w),
+                                  ("h", self.crop_h)]):
+    ttk.Label(crop_box, text=lbl).grid(...)
+    ttk.Entry(crop_box, textvariable=var, width=6).grid(...)
+
+ttk.Button(crop_box, text="Crop",
+           command=self.crop).grid(...)
+\end{lstlisting}
+
+\begin{itemize}
+    \item A small loop generates labels and entries for \texttt{x}, \texttt{y}, \texttt{w}, \texttt{h}.
+    \item The ``Crop'' button calls \texttt{self.crop}, which uses \texttt{basic\_ops.crop}.
+\end{itemize}
+
+\subsubsection*{Histogram}
+
+\begin{lstlisting}
+hist_box = self._labeled_box(controls, "Histogram")
+ttk.Button(hist_box, text="Compute Histogram",
+           command=self.show_histogram).grid(...)
+ttk.Button(hist_box, text="Equalize",
+           command=self.equalize_histogram).grid(...)
+self.hist_eval_label = ttk.Label(hist_box, text="",
+                                 wraplength=180)
+self.hist_eval_label.grid(...)
+\end{lstlisting}
+
+\begin{itemize}
+    \item ``Compute Histogram'' computes and displays the histogram of the current image.
+    \item ``Equalize'' applies histogram equalization on the grayscale image.
+    \item \texttt{hist\_eval\_label} displays a textual quality assessment from \texttt{histogram\_goodness}.
+\end{itemize}
+
+\subsubsection*{Filtering}
+
+\begin{lstlisting}
+filter_box = self._labeled_box(controls, "Filtering")
+ttk.Button(filter_box, text="Gaussian 19x19 (\\sigma=3)",
+           command=self.gaussian).grid(...)
+ttk.Button(filter_box, text="Median 7x7",
+           command=self.median).grid(...)
+ttk.Button(filter_box, text="Laplacian (2nd deriv.)",
+           command=self.laplacian).grid(...)
+ttk.Button(filter_box, text="Sobel",
+           command=self.sobel).grid(...)
+ttk.Button(filter_box, text="Gradient (1st deriv.)",
+           command=self.gradient).grid(...)
+\end{lstlisting}
+
+Each button applies a different spatial filter using functions from \texttt{filters.py}.
+
+\subsubsection*{Compression Section}
+
+\begin{lstlisting}
+comp_box = self._labeled_box(controls, "Compression")
+ttk.Button(comp_box, text="Huffman",
+           command=lambda: self.compress_action("huffman")).grid(...)
+ttk.Button(comp_box, text="Golomb-Rice",
+           command=lambda: self.compress_action("golomb")).grid(...)
+ttk.Button(comp_box, text="Arithmetic",
+           command=lambda: self.compress_action("arithmetic")).grid(...)
+ttk.Button(comp_box, text="LZW",
+           command=lambda: self.compress_action("lzw")).grid(...)
+ttk.Button(comp_box, text="Run-Length",
+           command=lambda: self.compress_action("rle")).grid(...)
+ttk.Button(comp_box, text="Symbol-based",
+           command=lambda: self.compress_action("symbol")).grid(...)
+ttk.Button(comp_box, text="Bit-plane",
+           command=lambda: self.compress_action("bitplane")).grid(...)
+ttk.Button(comp_box, text="Block DCT",
+           command=lambda: self.compress_action("dct")).grid(...)
+ttk.Button(comp_box, text="Predictive",
+           command=lambda: self.compress_action("predictive")).grid(...)
+ttk.Button(comp_box, text="Wavelet (Haar)",
+           command=lambda: self.compress_action("wavelet")).grid(...)
+\end{lstlisting}
+
+Each button triggers \texttt{compress\_action(mode)}, integrating the UI with the different compression methods in \texttt{compress.py}.
+
+\subsubsection*{Status Bar}
+
+\begin{lstlisting}
+self.status_var = tk.StringVar(value="Ready")
+ttk.Label(self, textvariable=self.status_var).grid(
+    column=0, row=2, sticky="ew", pady=(6, 0)
+)
+\end{lstlisting}
+
+A small status bar at the bottom of the window displays messages such as ``Loaded image.'', ``Applied Gaussian filter.'', and compression ratios.
+
+\subsection{Core Helper Methods}
+
+\subsubsection*{\_require\_image}
+
+\begin{lstlisting}
+def _require_image(self):
+    if self.original_img is None:
+        messagebox.showwarning("No image",
+                               "Please load an image first.")
+        return False
+    return True
+\end{lstlisting}
+
+Any action that needs an image calls this helper first. If no image is loaded, a warning is shown and the action is aborted.
+
+\subsubsection*{\_update\_info}
+
+\begin{lstlisting}
+def _update_info(self):
+    if self.original_img is None:
+        self.info_label.config(text="No image loaded")
+        return
+    info = io_utils.info(self.original_img)
+    text = (f"{info['width']}x{info['height']}  |  "
+            f"channels: {info['channels']}  |  "
+            f"dtype: {info['dtype']}")
+    self.info_label.config(text=text)
+\end{lstlisting}
+
+This function updates \texttt{info\_label} with basic image properties from \texttt{io\_utils.info}.
+
+\subsubsection*{\_set\_processed}
+
+\begin{lstlisting}
+def _set_processed(self, img, title="Processed"):
+    self.processed_img = img
+    self.preview.show_processed(img, title)
+\end{lstlisting}
+
+Stores the processed image and displays it on the right axis of the preview.
+
+\subsection{Major Actions}
+
+\subsubsection*{\texttt{load\_image}}
+
+\begin{lstlisting}
+def load_image(self):
+    path = filedialog.askopenfilename(
+        filetypes=[("Images",
+                    "*.png *.jpg *.jpeg *.bmp *.tif *.tiff")]
+    )
+    if not path:
+        return
+    try:
+        self.original_img = io_utils.load_image(path)
+    except Exception as exc:
+        messagebox.showerror("Error", str(exc))
+        return
+    self.processed_img = None
+    self.preview.show_original(self.original_img)
+    self.preview.show_processed(None)
+    self._update_info()
+    self.image_path_var.set(path.split("/")[-1])
+    self.status_var.set("Loaded image.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Shows an ``Open File'' dialog and restricts file types to images.
+    \item Loads the image as RGB float with \texttt{io\_utils.load\_image}.
+    \item Resets processed image and updates both preview and info label.
+\end{itemize}
+
+\subsubsection*{\texttt{to\_grayscale} and \texttt{to\_binary}}
+
+\begin{lstlisting}
+def to_grayscale(self):
+    if not self._require_image():
+        return
+    gray = basic_ops.rgb_to_grayscale(self.original_img)
+    self._set_processed(gray, "Grayscale")
+    self.status_var.set("Converted to grayscale.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Always converts from the original RGB image for a clean grayscale.
+\end{itemize}
+
+\begin{lstlisting}
+def to_binary(self):
+    if not self._require_image():
+        return
+    gray = basic_ops.rgb_to_grayscale(self.original_img)
+    binary, threshold = basic_ops.grayscale_to_binary(gray)
+    self.binary_threshold = threshold
+    self._set_processed(binary, f"Binary (t={threshold:.1f})")
+    self.status_var.set("Binary conversion complete.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Threshold is computed as the average intensity of the grayscale image.
+    \item Threshold is stored in \texttt{binary\_threshold} and displayed in the title.
+\end{itemize}
+
+\subsubsection*{Geometric Transformations}
+
+All geometric operations follow the same pattern: use the latest processed image if available, otherwise use the original.
+
+\begin{lstlisting}
+def translate(self):
+    if not self._require_image():
+        return
+    img = self.processed_img if self.processed_img is not None \
+          else self.original_img
+    result = geometry.translate(img,
+                                self.tx_var.get(),
+                                self.ty_var.get())
+    self.preview.show_original(self.original_img)
+    self._set_processed(result, "Translated")
+    self.status_var.set("Applied translation.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Uses \texttt{geometry.translate}, which builds an affine matrix and calls \texttt{cv2.warpAffine}.
+    \item Original is refreshed on the left, translation result on the right.
+\end{itemize}
+
+The other functions, \texttt{scale}, \texttt{rotate}, \texttt{shear\_x}, and \texttt{shear\_y}, work similarly with their respective geometry helpers.
+
+\subsubsection*{Resizing and Cropping}
+
+\begin{lstlisting}
+def resize(self, method: str):
+    if not self._require_image():
+        return
+    img = self.processed_img if self.processed_img is not None \
+          else self.original_img
+    result = interp.resize(img,
+                           self.new_w.get(),
+                           self.new_h.get(),
+                           method=method)
+    self._set_processed(result, f"Resize ({method})")
+    self.status_var.set(f"Resized using {method}.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Delegates to \texttt{interp.resize}, which uses \texttt{cv2.resize} with the chosen interpolation method.
+\end{itemize}
+
+\begin{lstlisting}
+def crop(self):
+    if not self._require_image():
+        return
+    img = self.processed_img if self.processed_img is not None \
+          else self.original_img
+    result = basic_ops.crop(
+        img,
+        self.crop_x.get(),
+        self.crop_y.get(),
+        self.crop_w.get(),
+        self.crop_h.get()
+    )
+    self._set_processed(result, "Cropped")
+    self.status_var.set("Cropped region.")
+\end{lstlisting}
+
+\subsubsection*{Histogram Operations}
+
+\begin{lstlisting}
+def show_histogram(self):
+    if not self._require_image():
+        return
+    gray = basic_ops.rgb_to_grayscale(
+        self.processed_img if self.processed_img is not None
+        else self.original_img
+    )
+    hist = basic_ops.histogram(gray)
+    self.preview.show_histogram(hist)
+    self.hist_eval_label.config(
+        text=basic_ops.histogram_goodness(hist)
+    )
+    self.status_var.set("Histogram computed.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Converts the current image to grayscale.
+    \item Computes a histogram (256 bins) using \texttt{basic\_ops.histogram}.
+    \item Displays the histogram using \texttt{ImagePreview.show\_histogram}.
+    \item Displays a textual assessment from \texttt{histogram\_goodness}.
+\end{itemize}
+
+\begin{lstlisting}
+def equalize_histogram(self):
+    if not self._require_image():
+        return
+    gray = basic_ops.rgb_to_grayscale(
+        self.processed_img if self.processed_img is not None
+        else self.original_img
+    )
+    eq = basic_ops.histogram_equalization(gray)
+    self._set_processed(eq, "Equalized")
+    self.status_var.set("Histogram equalization applied.")
+\end{lstlisting}
+
+\subsubsection*{Filtering}
+
+Examples:
+
+\begin{lstlisting}
+def gaussian(self):
+    if not self._require_image():
+        return
+    img = self.processed_img if self.processed_img is not None \
+          else self.original_img
+    result = filters.gaussian_blur(img, 19, 3.0)
+    self._set_processed(result, "Gaussian Blur")
+    self.status_var.set("Applied Gaussian filter.")
+\end{lstlisting}
+
+\begin{lstlisting}
+def laplacian(self):
+    if not self._require_image():
+        return
+    gray = basic_ops.rgb_to_grayscale(
+        self.processed_img if self.processed_img is not None
+        else self.original_img
+    )
+    result = filters.laplacian_filter(gray)
+    self._set_processed(result, "Laplacian")
+    self.status_var.set("Applied Laplacian filter.")
+\end{lstlisting}
+
+\begin{itemize}
+    \item The Gaussian and median filters work directly on the image (RGB or grayscale).
+    \item The Laplacian, Sobel and gradient filters operate on grayscale for edge detection / first derivative magnitude.
+\end{itemize}
+
+\subsection{Compression Integration (\texttt{compress\_action})}
+
+\begin{lstlisting}
+def compress_action(self, mode: str):
+    if not self._require_image():
+        return
+    img = self.processed_img if self.processed_img is not None \
+          else self.original_img
+    gray = basic_ops.rgb_to_grayscale(img)
+\end{lstlisting}
+
+All compression modes start from a grayscale image, then branch by \texttt{mode}.
+
+\subsubsection*{Huffman Example}
+
+\begin{lstlisting}
+if mode == "huffman":
+    data = compress.huffman_compress(gray)
+    decoded = compress.huffman_decompress(
+        data["bitstring"], data["tree"], gray.shape
+    )
+    self._set_processed(decoded,
+                        f"Huffman (r={data['ratio']:.2f})")
+    self.status_var.set(f"Huffman ratio {data['ratio']:.2f}")
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{huffman\_compress} returns the code tree, code map, bitstring and compression ratio.
+    \item \texttt{huffman\_decompress} reconstructs the image from the bitstring and Huffman tree.
+    \item The reconstructed image is shown, and the compression ratio appears both in the title and status bar.
+\end{itemize}
+
+\subsubsection*{Other Modes}
+
+Similarly for:
+
+\begin{itemize}
+    \item \textbf{Golomb-Rice}: \texttt{golomb\_rice\_encode} / \texttt{golomb\_rice\_decode}.
+    \item \textbf{LZW}: \texttt{lzw\_encode} / \texttt{lzw\_decode}.
+    \item \textbf{Run-Length}: \texttt{rle\_encode} / \texttt{rle\_decode}.
+    \item \textbf{Symbol-based}: \texttt{symbol\_based\_encode} / \texttt{symbol\_based\_decode}.
+    \item \textbf{Bit-plane}: uses \texttt{bit\_planes}, then visualizes the eight bit-planes as a grid.
+    \item \textbf{Block DCT}: uses \texttt{dct\_compress} and displays the reconstructed image and number of kept coefficients.
+    \item \textbf{Predictive Coding}: \texttt{predictive\_encode} / \texttt{predictive\_decode}.
+    \item \textbf{Wavelet (Haar)}: applies Haar wavelet transform and its inverse for reconstruction.
+\end{itemize}
+
+\subsubsection*{Bit-plane Visualization Helper}
+
+\begin{lstlisting}
+def _stack_bitplanes(self, planes):
+    # Combine bit-planes into a square grid for visualization.
+    rows = []
+    for i in range(0, 8, 2):
+        left = np.hstack((planes[i], planes[i + 1]))
+        rows.append(left)
+    return np.vstack(rows)
+\end{lstlisting}
+
+\begin{itemize}
+    \item The eight bit-planes are arranged in a 4x2 grid:
+    \begin{itemize}
+        \item Rows: (0,1), (2,3), (4,5), (6,7).
+        \item Each row is built using horizontal stacking; then all rows are stacked vertically.
+    \end{itemize}
+\end{itemize}
+
+\subsection{ImagePreview Class (preview.py)}
+
+\subsubsection*{Figure and Axes Setup}
+
+\begin{lstlisting}
+class ImagePreview:
+    def __init__(self, parent):
+        self.figure = Figure(figsize=(6.5, 4), dpi=100)
+        self.ax_original = self.figure.add_subplot(121)
+        self.ax_processed = self.figure.add_subplot(122)
+        self.ax_original.axis("off")
+        self.ax_processed.axis("off")
+\end{lstlisting}
+
+\begin{itemize}
+    \item A Matplotlib \texttt{Figure} is created with two subplots side by side:
+    \begin{itemize}
+        \item \texttt{ax\_original}: left, for the original image.
+        \item \texttt{ax\_processed}: right, for processed result or histogram.
+    \end{itemize}
+    \item Axis decorations (ticks, spines) are turned off to show pure images.
+\end{itemize}
+
+\subsubsection*{Embedding in Tkinter}
+
+\begin{lstlisting}
+self.canvas = FigureCanvasTkAgg(self.figure, master=parent)
+self.canvas_widget = self.canvas.get_tk_widget()
+self.canvas_widget.pack(fill="both", expand=True)
+self.canvas.draw()
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{FigureCanvasTkAgg} embeds the Matplotlib figure as a Tkinter widget.
+    \item The canvas widget is packed so it fills the entire parent frame.
+    \item A first draw call renders an initial empty figure.
+\end{itemize}
+
+\subsubsection*{Image Preparation Helper}
+
+\begin{lstlisting}
+def _prep_image(img: np.ndarray):
+    if img is None:
+        return None
+    if img.ndim == 2:
+        return np.clip(img, 0, 255)
+    return np.clip(img, 0, 255).astype(np.float32) / 255.0
+\end{lstlisting}
+
+\begin{itemize}
+    \item If the image is grayscale (2D), it simply clips intensities to the valid range.
+    \item If it is color (H x W x 3), it clips and scales to [0,1], which is the format expected by Matplotlib for RGB images.
+\end{itemize}
+
+\subsubsection*{Showing the Original Image}
+
+\begin{lstlisting}
+def show_original(self, img: np.ndarray, title="Original"):
+    self.ax_original.clear()
+    self.ax_original.axis("off")
+    img_prep = _prep_image(img)
+    if img_prep is not None:
+        if img_prep.ndim == 2:
+            self.ax_original.imshow(img_prep, cmap="gray")
+        else:
+            self.ax_original.imshow(img_prep)
+    self.ax_original.set_title(title)
+    self.canvas.draw_idle()
+\end{lstlisting}
+
+\begin{itemize}
+    \item Clears the left axis and hides axes again.
+    \item Prepares the image; if it exists:
+    \begin{itemize}
+        \item Uses grayscale colormap for 2D images.
+        \item Uses default RGB for color images.
+    \end{itemize}
+    \item Sets an axis title and schedules a redraw.
+\end{itemize}
+
+\subsubsection*{Showing the Processed Image}
+
+\begin{lstlisting}
+def show_processed(self, img: np.ndarray, title="Processed"):
+    self.ax_processed.clear()
+    self.ax_processed.axis("off")
+    img_prep = _prep_image(img)
+    if img_prep is not None:
+        if img_prep.ndim == 2:
+            self.ax_processed.imshow(img_prep, cmap="gray")
+        else:
+            self.ax_processed.imshow(img_prep)
+    self.ax_processed.set_title(title)
+    self.canvas.draw_idle()
+\end{lstlisting}
+
+The same logic as \texttt{show\_original}, but operates on the right axis.
+
+\subsubsection*{Showing a Histogram}
+
+\begin{lstlisting}
+def show_histogram(self, hist: np.ndarray):
+    self.ax_processed.clear()
+    self.ax_processed.bar(range(256), hist, color="#7f8c8d")
+    self.ax_processed.set_title("Histogram")
+    self.ax_processed.set_xlim(0, 255)
+    self.canvas.draw_idle()
+\end{lstlisting}
+
+\begin{itemize}
+    \item Clears the right axis.
+    \item Plots a bar chart with 256 bars for intensities 0--255.
+    \item Fixes the x-axis range to [0, 255].
+\end{itemize}
+
+% =====================================================
+% 3. COMPRESSION AND PROCESSING (HIGH-LEVEL)
+% =====================================================
+
+\section{Compression and Processing Algorithms (High-Level)}\label{sec:compression}
+
+This section summarizes the main compression and coding techniques provided in \texttt{compress.py}, which are invoked from the UI.
+
+\subsection{Huffman Coding}
+
+\begin{itemize}
+    \item \textbf{Goal}: assign variable-length binary codes to each pixel value such that:
+    \begin{itemize}
+        \item Frequent symbols get short codes.
+        \item Rare symbols get longer codes.
+        \item The code is prefix-free (no code is prefix of another), so decoding is unambiguous.
+    \end{itemize}
+    \item \textbf{Implementation steps}:
+    \begin{enumerate}
+        \item Flatten the grayscale image to a list of pixel values.
+        \item Compute symbol frequencies with a \texttt{Counter}.
+        \item Build a min-heap of leaf nodes (frequency, symbol).
+        \item Repeatedly pop the two smallest nodes and merge them into a parent node.
+        \item The final tree root represents the Huffman tree.
+        \item Traverse the tree:
+        \begin{itemize}
+            \item Left edge adds a ``0'' to the current code.
+            \item Right edge adds a ``1''.
+            \item Reaching a leaf assigns the accumulated bitstring to that symbol.
+        \end{itemize}
+        \item Encode each pixel by replacing it with its bitstring code.
+    \end{enumerate}
+    \item The project estimates compression ratio by comparing:
+    \begin{itemize}
+        \item \texttt{original\_bits} = number of pixels $\times$ 8.
+        \item \texttt{compressed\_bits} = length of the Huffman bitstring.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Golomb-Rice Coding}
+
+\begin{itemize}
+    \item Designed for non-negative integers where small values are more probable.
+    \item Rice coding chooses a divisor $m = 2^k$ and encodes a value:
+    \begin{itemize}
+        \item $q = \lfloor \text{val}/m \rfloor$ (quotient).
+        \item $r = \text{val} \bmod m$ (remainder).
+    \end{itemize}
+    \item Code = unary for $q$ (a string of $q$ ones followed by a zero), then fixed $k$-bit binary for $r$.
+    \item The project applies this to grayscale intensities and estimates the bit cost from the concatenated bitstring.
+\end{itemize}
+
+\subsection{Arithmetic Coding (Entropy-Based Estimate)}
+
+\begin{itemize}
+    \item True arithmetic coding encodes an entire sequence into a sub-interval of $[0,1)$, achieving near-optimal compression close to Shannon entropy.
+    \item In the project, the implementation:
+    \begin{itemize}
+        \item Computes symbol frequencies and probabilities.
+        \item Calculates Shannon entropy:
+        \[
+            H = -\sum_{i} p_i \log_2 p_i
+        \]
+        \item Estimates an ideal number of bits as $H \times N$ where $N$ is the number of pixels.
+        \item This is used to report a theoretical compression ratio, while reconstruction simply returns the original grayscale image.
+    \end{itemize}
+\end{itemize}
+
+\subsection{LZW (Lempel--Ziv--Welch)}
+
+\begin{itemize}
+    \item \textbf{Dictionary-based} lossless compression.
+    \item Starts with a dictionary of all single-byte sequences (0--255).
+    \item While scanning the data:
+    \begin{itemize}
+        \item Maintain the longest current sequence that exists in the dictionary.
+        \item When adding another symbol would break it, output the code of the current sequence, and add the extended sequence to the dictionary.
+    \end{itemize}
+    \item Decoding reconstructs the same dictionary on the fly by interpreting each code as a sequence and adding new combinations of previous sequences and first characters.
+\end{itemize}
+
+\subsection{Run-Length Encoding (RLE)}
+
+\begin{itemize}
+    \item Ideal for sequences with many repeated values.
+    \item Stores data as $(\text{value}, \text{count})$ pairs.
+    \item In the implementation:
+    \begin{itemize}
+        \item The flattened image is scanned, and consecutive runs of identical pixel values are grouped.
+        \item Bit cost is estimated assuming 8 bits for the value and 16 bits for the count.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Symbol-Based Fixed-Length Coding}
+
+\begin{itemize}
+    \item Counts symbol frequencies and sorts symbols from most to least frequent.
+    \item Assigns each symbol an index (0, 1, 2, \ldots) and encodes indices using a fixed number of bits:
+    \[
+        \text{bits\_needed} = \lceil \log_2 (\text{\#symbols}) \rceil
+    \]
+    \item This is simpler than Huffman (fixed length instead of variable length) and generally less efficient, but easier to implement.
+\end{itemize}
+
+\subsection{Bit-Plane Coding}
+
+\begin{itemize}
+    \item Decomposes 8-bit grayscale images into 8 binary images, each corresponding to a bit position.
+    \item For each pixel:
+    \begin{itemize}
+        \item The least significant bit forms plane 0.
+        \item The most significant bit forms plane 7.
+    \end{itemize}
+    \item Each bit-plane can be visualized independently.
+    \item The original image can be reconstructed by summing contributions from all planes.
+\end{itemize}
+
+\subsection{Block DCT Coding}
+
+\begin{itemize}
+    \item Very similar in spirit to JPEG:
+    \begin{itemize}
+        \item The image is divided into 8x8 blocks.
+        \item Each block is shifted by subtracting 128 to center values around zero.
+        \item A 2D Discrete Cosine Transform (DCT) is applied to each block.
+        \item The magnitude of coefficients is analyzed, and only a certain ratio of largest coefficients is kept.
+        \item Remaining coefficients are zeroed out and the block is inverse-transformed.
+    \end{itemize}
+    \item Because energy in natural images is concentrated in low frequencies, keeping only the largest coefficients can still preserve most visual information while reducing storage requirements.
+\end{itemize}
+
+\subsection{Predictive Coding (DPCM)}
+
+\begin{itemize}
+    \item Instead of storing raw pixel values, store the difference between a pixel and a prediction, often its left neighbor.
+    \item If adjacent pixels are similar, these differences (residuals) are small, and thus more compressible.
+    \item Decoding reconstructs each pixel by adding the stored residual to the same predictor used at encoding.
+\end{itemize}
+
+\subsection{Haar Wavelet Transform (1 Level)}
+
+\begin{itemize}
+    \item The image is processed in 2x2 blocks.
+    \item For each block of four pixels $(a,b,c,d)$:
+    \begin{itemize}
+        \item An approximation (low-frequency average).
+        \item Horizontal, vertical, and diagonal detail coefficients.
+    \end{itemize}
+    \item The transform can be inverted exactly using the inverse formulas.
+    \item Wavelets are useful for multi-resolution representation and form the basis of schemes like JPEG 2000.
+\end{itemize}
+
+% =====================================================
+% 4. DETAILED FUNCTION REFERENCE (EVERY FUNCTION)
+% =====================================================
+
+\section{Detailed Function Reference}\label{sec:processing}
+
+This section goes \emph{function by function} through the processing and backend code. For each function we summarize:
+
+\begin{itemize}
+    \item What it does.
+    \item Its inputs and outputs.
+    \item Important implementation details.
+\end{itemize}
+
+\subsection{\texttt{basic\_ops.py} (Basic Operations)}
+
+\subsubsection*{\texttt{rgb\_to\_grayscale(img)}}
+
+\begin{lstlisting}
+def rgb_to_grayscale(img):
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY).astype(np.float32)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{Input}: \texttt{img} is an RGB image as a NumPy array of shape $(H, W, 3)$.
+    \item \textbf{Operation}:
+    \begin{itemize}
+        \item Uses OpenCV's \texttt{cvtColor} to convert from RGB to a single-channel grayscale image.
+        \item \texttt{cv2.COLOR\_RGB2GRAY} uses a weighted sum of R,G,B channels to approximate luminance.
+    \end{itemize}
+    \item \textbf{Output}: a \texttt{float32} array of shape $(H, W)$.
+\end{itemize}
+
+\subsubsection*{\texttt{grayscale\_to\_binary(grayscale\_image)}}
+
+\begin{lstlisting}
+def grayscale_to_binary(grayscale_image):
+    """Convert grayscale to binary using average intensity threshold."""
+    threshold = float(cv2.mean(grayscale_image)[0])
+    _, binary = cv2.threshold(grayscale_image.astype(np.float32),
+                              threshold, 255, cv2.THRESH_BINARY)
+    return binary, threshold
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{Input}: \texttt{grayscale\_image} as $(H, W)$.
+    \item \textbf{Step 1}: \texttt{cv2.mean} computes the mean intensity over all pixels.
+    \item \textbf{Step 2}: \texttt{cv2.threshold} binarizes:
+    \begin{itemize}
+        \item Pixels $\geq$ threshold $\rightarrow 255$ (white).
+        \item Pixels $<$ threshold $\rightarrow 0$ (black).
+    \end{itemize}
+    \item \textbf{Output}: the binary image and the threshold used.
+\end{itemize}
+
+\subsubsection*{\texttt{crop(img, x, y, w, h)}}
+
+\begin{lstlisting}
+def crop(img, x, y, w, h):
+    return img[y:y+h, x:x+w]
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{Input}:
+    \begin{itemize}
+        \item \texttt{img}: 2D or 3D image.
+        \item \texttt{x,y}: top-left corner of the crop.
+        \item \texttt{w,h}: width and height of the crop.
+    \end{itemize}
+    \item Uses NumPy slicing: rows first (\texttt{y:y+h}), columns second (\texttt{x:x+w}).
+    \item \textbf{Output}: cropped sub-image.
+\end{itemize}
+
+\subsubsection*{\texttt{histogram(gray)}}
+
+\begin{lstlisting}
+def histogram(gray):
+    """Compute histogram for grayscale image."""
+    hist = cv2.calcHist([gray.astype(np.uint8)],
+                        [0], None, [256], [0, 256]).flatten()
+    return hist.astype(np.int32)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{Input}: grayscale image, any numeric type.
+    \item \textbf{Operation}:
+    \begin{itemize}
+        \item Converts to \texttt{uint8}.
+        \item \texttt{cv2.calcHist} counts how many pixels fall into 256 intensity bins (0--255).
+    \end{itemize}
+    \item \textbf{Output}: 1D array of length 256, with integer counts.
+\end{itemize}
+
+\subsubsection*{\texttt{histogram\_goodness(hist)}}
+
+\begin{lstlisting}
+def histogram_goodness(hist):
+    """Assess histogram spread."""
+    total = np.sum(hist)
+    if total == 0:
+        return "Empty histogram."
+    nonzero_bins = np.count_nonzero(hist)
+    spread_ratio = nonzero_bins / 256.0
+    if spread_ratio > 0.7:
+        return "Histogram is well-distributed; good contrast."
+    if spread_ratio > 0.4:
+        return "Histogram is moderately spread; contrast is acceptable."
+    return "Histogram is concentrated; consider equalization to improve contrast."
+\end{lstlisting}
+
+\begin{itemize}
+    \item Counts how many bins are non-empty and divides by 256 to get a ratio.
+    \item Simple heuristic:
+    \begin{itemize}
+        \item $> 0.7$: good contrast.
+        \item $> 0.4$: acceptable.
+        \item Else: intensities are concentrated; contrast is weak.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{\texttt{histogram\_equalization(gray)}}
+
+\begin{lstlisting}
+def histogram_equalization(gray):
+    """Apply histogram equalization via OpenCV."""
+    gray_uint8 = np.clip(gray, 0, 255).astype(np.uint8)
+    return cv2.equalizeHist(gray_uint8).astype(np.float32)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Clips values to [0,255] and converts to \texttt{uint8}.
+    \item Calls \texttt{cv2.equalizeHist}:
+    \begin{itemize}
+        \item Spreads out intensity values to use more of the available range.
+        \item Enhances global contrast in many images.
+    \end{itemize}
+    \item Returns a \texttt{float32} image.
+\end{itemize}
+
+\subsection{\texttt{filters.py} (Filtering Operations)}
+
+\subsubsection*{\texttt{convolve(img, kernel)}}
+
+\begin{lstlisting}
+def convolve(img, kernel):
+    """Convolution via OpenCV with replicate padding."""
+    return cv2.filter2D(img, ddepth=cv2.CV_32F,
+                        kernel=kernel,
+                        borderType=cv2.BORDER_REPLICATE)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Generic 2D convolution.
+    \item \texttt{BORDER\_REPLICATE}: pads the image border by repeating edge pixels to avoid dark borders.
+    \item \texttt{CV\_32F}: output is 32-bit float for good precision.
+\end{itemize}
+
+\subsubsection*{\texttt{gaussian\_blur(img, size=19, sigma=3.0)}}
+
+\begin{lstlisting}
+def gaussian_blur(img, size: int = 19, sigma: float = 3.0):
+    return cv2.GaussianBlur(img, (size, size),
+                            sigmaX=sigma, sigmaY=sigma,
+                            borderType=cv2.BORDER_REPLICATE)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Applies Gaussian smoothing with a kernel of size \texttt{size} x \texttt{size}.
+    \item \texttt{sigma} controls how strong the blur is.
+\end{itemize}
+
+\subsubsection*{\texttt{median\_filter(img, size=7)}}
+
+\begin{lstlisting}
+def median_filter(img, size: int = 7):
+    ksize = size if size % 2 == 1 else size + 1
+    return cv2.medianBlur(img, ksize)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Ensures kernel size is odd (required by OpenCV).
+    \item Median filter is very good at removing salt-and-pepper noise.
+\end{itemize}
+
+\subsubsection*{\texttt{laplacian\_filter(img)}}
+
+\begin{lstlisting}
+def laplacian_filter(img):
+    return cv2.Laplacian(img, ddepth=cv2.CV_32F,
+                         ksize=3,
+                         borderType=cv2.BORDER_REPLICATE)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Uses the Laplacian operator (second derivative) to highlight edges and rapid intensity changes.
+\end{itemize}
+
+\subsubsection*{\texttt{sobel\_filter(img)}}
+
+\begin{lstlisting}
+def sobel_filter(img):
+    gx = cv2.Sobel(img, cv2.CV_32F, 1, 0,
+                   ksize=3,
+                   borderType=cv2.BORDER_REPLICATE)
+    gy = cv2.Sobel(img, cv2.CV_32F, 0, 1,
+                   ksize=3,
+                   borderType=cv2.BORDER_REPLICATE)
+    return cv2.magnitude(gx, gy)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Computes horizontal gradient (\texttt{gx}) and vertical gradient (\texttt{gy}) using Sobel filters.
+    \item \texttt{cv2.magnitude} returns $\sqrt{g_x^2 + g_y^2}$, a gradient magnitude image.
+\end{itemize}
+
+\subsubsection*{\texttt{gradient\_first\_derivative(img)}}
+
+\begin{lstlisting}
+def gradient_first_derivative(img):
+    gx = cv2.Sobel(img, cv2.CV_32F, 1, 0,
+                   ksize=1,
+                   borderType=cv2.BORDER_REPLICATE)
+    gy = cv2.Sobel(img, cv2.CV_32F, 0, 1,
+                   ksize=1,
+                   borderType=cv2.BORDER_REPLICATE)
+    return cv2.magnitude(gx, gy)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Same idea as Sobel, but with \texttt{ksize=1}, effectively a simpler first-derivative operator.
+\end{itemize}
+
+\subsection{\texttt{geometry.py} (Geometric Transforms)}
+
+\subsubsection*{Constants and Interpolation Map}
+
+\begin{lstlisting}
+MAX_OUTPUT_PIXELS = 50_000_000
+
+_INTERP = {
+    "nearest": cv2.INTER_NEAREST,
+    "bilinear": cv2.INTER_LINEAR,
+    "bicubic": cv2.INTER_CUBIC,
+}
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{MAX\_OUTPUT\_PIXELS}: safety limit to avoid creating extremely large images.
+    \item \texttt{\_INTERP}: maps human-friendly names to OpenCV interpolation flags.
+\end{itemize}
+
+\subsubsection*{\texttt{apply\_affine(img, matrix, output\_shape=None, method="bilinear")}}
+
+\begin{lstlisting}
+def apply_affine(img, matrix, output_shape=None,
+                 method: str = "bilinear"):
+    """Affine warp via cv2.warpAffine with replicate padding."""
+    h, w = img.shape[:2]
+    out_h, out_w = output_shape if output_shape is not None else (h, w)
+    flags = _INTERP.get(method.lower(), cv2.INTER_LINEAR)
+    return cv2.warpAffine(img.astype(np.float32),
+                          matrix.astype(np.float32),
+                          (out_w, out_h),
+                          flags=flags,
+                          borderMode=cv2.BORDER_REPLICATE)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Generic helper: warps an image by any 2x3 affine matrix.
+    \item \texttt{output\_shape} lets you specify the new height and width; if omitted, uses original size.
+    \item Interpolation is chosen via \texttt{method} string.
+\end{itemize}
+
+\subsubsection*{\texttt{translate(img, tx, ty)}}
+
+\begin{lstlisting}
+def translate(img, tx: float, ty: float):
+    mat = np.array([[1, 0, tx],
+                    [0, 1, ty]],
+                   dtype=np.float32)
+    return apply_affine(img, mat, method="bilinear")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Builds an affine matrix that shifts all pixels by \texttt{(tx, ty)}.
+    \item Positive \texttt{tx} moves right, positive \texttt{ty} moves down.
+\end{itemize}
+
+\subsubsection*{\texttt{scale(img, sx, sy)}}
+
+\begin{lstlisting}
+def scale(img, sx: float, sy: float):
+    new_w = max(1, int(round(img.shape[1] * sx)))
+    new_h = max(1, int(round(img.shape[0] * sy)))
+    pixels = new_w * new_h
+    if pixels > MAX_OUTPUT_PIXELS:
+        factor = (MAX_OUTPUT_PIXELS / pixels) ** 0.5
+        new_w = max(1, int(round(img.shape[1] * sx * factor)))
+        new_h = max(1, int(round(img.shape[0] * sy * factor)))
+    return cv2.resize(img.astype(np.float32),
+                      (new_w, new_h),
+                      interpolation=cv2.INTER_LINEAR)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Computes the intended new size from scale factors.
+    \item If the number of pixels would exceed \texttt{MAX\_OUTPUT\_PIXELS}, it computes a shrink factor to respect the limit.
+    \item Uses bilinear interpolation for resizing.
+\end{itemize}
+
+\subsubsection*{\texttt{rotate(img, angle\_deg)}}
+
+\begin{lstlisting}
+def rotate(img, angle_deg: float):
+    h, w = img.shape[:2]
+    center = (w / 2.0, h / 2.0)
+    mat = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
+    return cv2.warpAffine(img.astype(np.float32),
+                          mat, (w, h),
+                          flags=cv2.INTER_LINEAR,
+                          borderMode=cv2.BORDER_REPLICATE)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Rotates around the image center by \texttt{angle\_deg} degrees.
+    \item Keeps the same output size $(w,h)$; rotated content may be cropped.
+\end{itemize}
+
+\subsubsection*{\texttt{shear\_x(img, shx)} and \texttt{shear\_y(img, shy)}}
+
+\begin{lstlisting}
+def shear_x(img, shx: float):
+    mat = np.array([[1, shx, 0],
+                    [0, 1, 0]],
+                   dtype=np.float32)
+    out_w = int(img.shape[1] + abs(shx) * img.shape[0])
+    return apply_affine(img, mat,
+                        output_shape=(img.shape[0], out_w),
+                        method="bilinear")
+
+def shear_y(img, shy: float):
+    mat = np.array([[1, 0, 0],
+                    [shy, 1, 0]],
+                   dtype=np.float32)
+    out_h = int(img.shape[0] + abs(shy) * img.shape[1])
+    return apply_affine(img, mat,
+                        output_shape=(out_h, img.shape[1]),
+                        method="bilinear")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Horizontal shear (\texttt{shear\_x}) slides rows horizontally proportional to their vertical position.
+    \item Vertical shear (\texttt{shear\_y}) slides columns vertically proportional to their horizontal position.
+    \item Output dimensions are expanded to fit the sheared content.
+\end{itemize}
+
+\subsection{\texttt{interp.py} (Interpolation / Resampling)}
+
+\subsubsection*{\texttt{sample\_image(img, xs, ys, method="bilinear")}}
+
+\begin{lstlisting}
+def sample_image(img, xs, ys, method: str = "bilinear"):
+    """Remap with OpenCV interpolation."""
+    interp = {"nearest": cv2.INTER_NEAREST,
+              "bilinear": cv2.INTER_LINEAR,
+              "bicubic": cv2.INTER_CUBIC}.get(method.lower(),
+                                              cv2.INTER_LINEAR)
+    return cv2.remap(img.astype(np.float32),
+                     xs.astype(np.float32),
+                     ys.astype(np.float32),
+                     interpolation=interp,
+                     borderMode=cv2.BORDER_REPLICATE)
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{xs} and \texttt{ys} are coordinate grids specifying where each output pixel samples from the input.
+    \item \texttt{cv2.remap} is a general warping function using arbitrary coordinate maps.
+\end{itemize}
+
+\subsubsection*{\texttt{resize(img, new\_width, new\_height, method="nearest")}}
+
+\begin{lstlisting}
+def resize(img, new_width: int, new_height: int,
+           method: str = "nearest"):
+    """Resize via cv2.resize with chosen interpolation."""
+    interp = {"nearest": cv2.INTER_NEAREST,
+              "bilinear": cv2.INTER_LINEAR,
+              "bicubic": cv2.INTER_CUBIC}.get(method.lower(),
+                                              cv2.INTER_NEAREST)
+    w = max(1, int(new_width))
+    h = max(1, int(new_height))
+    return cv2.resize(img.astype(np.float32),
+                      (w, h),
+                      interpolation=interp)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Clamps width/height to at least 1 pixel.
+    \item Chooses interpolation based on \texttt{method} string.
+\end{itemize}
+
+\subsection{\texttt{io\_utils.py} (Image I/O Helpers)}
+
+\subsubsection*{\texttt{load\_image(path)}}
+
+\begin{lstlisting}
+def load_image(path: str):
+    """Load image from disk as RGB float array."""
+    img_bgr = cv2.imread(path, cv2.IMREAD_COLOR)
+    if img_bgr is None:
+        raise ValueError(f"Unable to read image at {path}")
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    return img_rgb.astype(np.float32)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Reads an image from disk using OpenCV (BGR order).
+    \item Converts to RGB for consistency with Matplotlib and UI.
+    \item Throws a \texttt{ValueError} if reading fails.
+\end{itemize}
+
+\subsubsection*{\texttt{ensure\_uint8(img)}}
+
+\begin{lstlisting}
+def ensure_uint8(img):
+    """Clip and convert to uint8 for display."""
+    clipped = np.clip(img, 0, 255)
+    return clipped.astype(np.uint8)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Ensures an image can be safely encoded/saved as an 8-bit image.
+\end{itemize}
+
+\subsubsection*{\texttt{info(img)}}
+
+\begin{lstlisting}
+def info(img):
+    """Return basic image info."""
+    h, w = img.shape[:2]
+    channels = 1 if img.ndim == 2 else img.shape[2]
+    dtype = str(img.dtype)
+    return {"width": w, "height": h,
+            "channels": channels, "dtype": dtype}
+\end{lstlisting}
+
+\begin{itemize}
+    \item Extracts basic metadata: width, height, number of channels, and data type.
+\end{itemize}
+
+\subsection{\texttt{compress.py} (Compression Algorithms)}
+
+\subsubsection*{Utility: \texttt{\_to\_gray\_uint8(img)}}
+
+\begin{lstlisting}
+def _to_gray_uint8(img):
+    if img.ndim == 3:
+        img = np.mean(img, axis=2)
+        return np.clip(img, 0, 255).astype(np.uint8)
+    return np.clip(img, 0, 255).astype(np.uint8)
+\end{lstlisting}
+
+\begin{itemize}
+    \item If \texttt{img} is RGB, takes the average of channels.
+    \item Clips values to [0,255] and converts to \texttt{uint8}.
+\end{itemize}
+
+\subsubsection*{Utility: \texttt{\_compression\_ratio}}
+
+\begin{lstlisting}
+def _compression_ratio(original_bits: int,
+                       compressed_bits: int) -> float:
+    if compressed_bits == 0:
+        return 0.0
+    return original_bits / compressed_bits
+\end{lstlisting}
+
+\begin{itemize}
+    \item Simple helper to avoid division by zero.
+\end{itemize}
+
+\subsubsection*{Huffman: \texttt{\_HuffNode} and Tree Building}
+
+\begin{lstlisting}
+class _HuffNode:
+    def __init__(self, freq, symbol=None,
+                 left=None, right=None):
+        self.freq = freq
+        self.symbol = symbol
+        self.left = left
+        self.right = right
+
+    def __lt__(self, other):
+        return self.freq < other.freq
+\end{lstlisting}
+
+\begin{itemize}
+    \item Node structure for Huffman tree (frequency + symbol or children).
+    \item \texttt{\_\_lt\_\_} allows nodes to be compared inside a \texttt{heapq}.
+\end{itemize}
+
+\begin{lstlisting}
+def _build_huffman_tree(data):
+    flat = data.ravel().tolist()
+    freq = Counter(flat)
+    heap = []
+    for sym, f in freq.items():
+        heapq.heappush(heap, (f, _HuffNode(f, sym)))
+    while len(heap) > 1:
+        f1, n1 = heapq.heappop(heap)
+        f2, n2 = heapq.heappop(heap)
+        merged = _HuffNode(f1 + f2, None, n1, n2)
+        heapq.heappush(heap, (merged.freq, merged))
+    return heap[0][1]
+\end{lstlisting}
+
+\begin{itemize}
+    \item Builds a Huffman tree by always merging the two least frequent nodes.
+\end{itemize}
+
+\subsubsection*{\texttt{\_generate\_codes(node, prefix="", codes=None)}}
+
+\begin{lstlisting}
+def _generate_codes(node: _HuffNode, prefix="", codes=None):
+    if codes is None:
+        codes = {}
+    if node.symbol is not None:
+        codes[node.symbol] = prefix or "0"
+        return codes
+    _generate_codes(node.left, prefix + "0", codes)
+    _generate_codes(node.right, prefix + "1", codes)
+    return codes
+\end{lstlisting}
+
+\begin{itemize}
+    \item Recursively traverses the tree:
+    \begin{itemize}
+        \item Left child adds ``0'', right child adds ``1''.
+        \item Leaves store final codes.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{\texttt{huffman\_compress(img)}}
+
+\begin{lstlisting}
+def huffman_compress(img):
+    gray = _to_gray_uint8(img)
+    data = gray.ravel().tolist()
+    tree = _build_huffman_tree(gray)
+    codes = _generate_codes(tree)
+    bitstring = "".join(codes[val] for val in data)
+    original_bits = len(data) * 8
+    compressed_bits = len(bitstring)
+    return {
+        "bitstring": bitstring,
+        "codes": codes,
+        "tree": tree,
+        "ratio": _compression_ratio(original_bits,
+                                    compressed_bits),
+        "original_bits": original_bits,
+        "compressed_bits": compressed_bits,
+    }
+\end{lstlisting}
+
+\begin{itemize}
+    \item Produces:
+    \begin{itemize}
+        \item \texttt{bitstring}: concatenation of symbol codes.
+        \item \texttt{codes}: mapping from symbol to bitstring.
+        \item \texttt{tree}: the root node for decoding.
+        \item Ratio and bit counts.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{\texttt{huffman\_decompress(bitstring, tree, shape)}}
+
+\begin{lstlisting}
+def huffman_decompress(bitstring: str,
+                       tree: _HuffNode, shape):
+    decoded_vals = []
+    node = tree
+    for bit in bitstring:
+        node = node.left if bit == "0" else node.right
+        if node.symbol is not None:
+            decoded_vals.append(node.symbol)
+            node = tree
+    arr = np.array(decoded_vals, dtype=np.uint8)
+    if arr.size < shape[0] * shape[1]:
+        pad = shape[0] * shape[1] - arr.size
+        arr = np.pad(arr, (0, pad), mode="edge")
+    return arr.reshape(shape)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Walks down the tree bit by bit.
+    \item When a leaf is reached, appends its symbol and resets to root.
+    \item Pads if needed to match original pixel count.
+\end{itemize}
+
+\subsubsection*{Golomb-Rice: \texttt{golomb\_rice\_encode} / \texttt{golomb\_rice\_decode}}
+
+\begin{lstlisting}
+def golomb_rice_encode(img, k: int = 2):
+    gray = _to_gray_uint8(img)
+    m = 1 << k
+    bits = []
+    for val in gray.ravel():
+        q = val // m
+        r = val % m
+        bits.append("1" * q + "0")
+        bits.append(format(r, f"0{k}b"))
+    bitstring = "".join(bits)
+    original_bits = gray.size * 8
+    return {
+        "bitstring": bitstring,
+        "k": k,
+        "ratio": _compression_ratio(original_bits,
+                                    len(bitstring)),
+        "original_bits": original_bits,
+        "compressed_bits": len(bitstring),
+    }
+\end{lstlisting}
+
+\begin{lstlisting}
+def golomb_rice_decode(bitstring: str, shape, k: int = 2):
+    m = 1 << k
+    values = []
+    idx = 0
+    while idx < len(bitstring) and \
+          len(values) < shape[0] * shape[1]:
+        q = 0
+        while idx < len(bitstring) and \
+              bitstring[idx] == "1":
+            q += 1
+            idx += 1
+        idx += 1  # skip zero
+        if idx + k > len(bitstring):
+            break
+        r = int(bitstring[idx:idx + k], 2)
+        idx += k
+        values.append(q * m + r)
+    arr = np.array(values, dtype=np.uint8)
+    if arr.size < shape[0] * shape[1]:
+        arr = np.pad(arr,
+                     (0, shape[0] * shape[1] - arr.size),
+                     mode="edge")
+    return arr.reshape(shape)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Encodes each pixel as unary quotient followed by fixed-length remainder.
+    \item Decoder reverses the process by reading unary part then remainder bits.
+\end{itemize}
+
+\subsubsection*{Arithmetic Coding (Entropy Estimate)}
+
+\begin{lstlisting}
+def arithmetic_encode(img):
+    gray = _to_gray_uint8(img)
+    data = gray.ravel().tolist()
+    freq = Counter(data)
+    total = sum(freq.values())
+    import math
+    entropy = -sum((f / total) * math.log2(f / total)
+                   for f in freq.values() if f > 0)
+    original_bits = len(data) * 8
+    compressed_bits = max(1, int(entropy * len(data)))
+    ratio = _compression_ratio(original_bits,
+                               compressed_bits)
+    original_bits = len(data) * 8
+    return {
+        "ratio": ratio,
+        "original_bits": original_bits,
+        "compressed_bits": compressed_bits,
+        "shape": gray.shape,
+        "reconstructed": gray,
+    }
+\end{lstlisting}
+
+\begin{lstlisting}
+def arithmetic_decode(code, meta):
+    # Identity reconstruction for demo
+    return meta["reconstructed"]
+\end{lstlisting}
+
+\begin{itemize}
+    \item Does not implement full arithmetic coding; instead estimates ideal compression using entropy.
+    \item Returns the original grayscale image as ``reconstructed''.
+\end{itemize}
+
+\subsubsection*{LZW: \texttt{lzw\_encode} / \texttt{lzw\_decode}}
+
+\begin{lstlisting}
+def lzw_encode(img):
+    gray = _to_gray_uint8(img)
+    data = gray.ravel().tolist()
+    dict_size = 256
+    dictionary = {bytes([i]): i for i in range(dict_size)}
+    w = bytes([data[0]])
+    codes = []
+    for k in data[1:]:
+        wk = w + bytes([k])
+        if wk in dictionary:
+            w = wk
+        else:
+            codes.append(dictionary[w])
+            dictionary[wk] = dict_size
+            dict_size += 1
+            w = bytes([k])
+    codes.append(dictionary[w])
+    original_bits = len(data) * 8
+    compressed_bits = len(codes) * \
+        math.ceil(math.log2(dict_size + 1))
+    return {
+        "codes": codes,
+        "dict_size": dict_size,
+        "ratio": _compression_ratio(original_bits,
+                                    compressed_bits),
+        "original_bits": original_bits,
+        "compressed_bits": compressed_bits,
+        "shape": gray.shape,
+    }
+\end{lstlisting}
+
+\begin{lstlisting}
+def lzw_decode(codes, shape):
+    dict_size = 256
+    dictionary = {i: bytes([i]) for i in range(dict_size)}
+    w = bytes([codes[0]])
+    result = bytearray(w)
+    for k in codes[1:]:
+        if k in dictionary:
+            entry = dictionary[k]
+        elif k == dict_size:
+            entry = w + bytes([w[0]])
+        else:
+            entry = bytes([0])
+        result.extend(entry)
+        dictionary[dict_size] = w + bytes([entry[0]])
+        dict_size += 1
+        w = entry
+    arr = np.frombuffer(result, dtype=np.uint8)
+    return arr[:shape[0] * shape[1]].reshape(shape)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Classic LZW with a dynamically built dictionary of byte sequences.
+\end{itemize}
+
+\subsubsection*{Run-Length Encoding: \texttt{rle\_encode} / \texttt{rle\_decode}}
+
+\begin{lstlisting}
+def rle_encode(img):
+    gray = _to_gray_uint8(img)
+    data = gray.ravel()
+    pairs = []
+    count = 1
+    for i in range(1, len(data)):
+        if data[i] == data[i - 1]:
+            count += 1
+        else:
+            pairs.append((int(data[i - 1]), count))
+            count = 1
+    pairs.append((int(data[-1]), count))
+    bit_estimate = len(pairs) * (8 + 16)
+    ratio = _compression_ratio(len(data) * 8, bit_estimate)
+    return {"pairs": pairs, "ratio": ratio,
+            "original_bits": len(data) * 8,
+            "compressed_bits": bit_estimate,
+            "shape": gray.shape}
+\end{lstlisting}
+
+\begin{lstlisting}
+def rle_decode(pairs, shape):
+    values = []
+    for val, count in pairs:
+        values.extend([val] * count)
+    arr = np.array(values, dtype=np.uint8)
+    return arr[:shape[0] * shape[1]].reshape(shape)
+\end{lstlisting}
+
+\subsubsection*{Symbol-Based Coding: \texttt{symbol\_based\_encode} / \texttt{symbol\_based\_decode}}
+
+\begin{lstlisting}
+def symbol_based_encode(img):
+    gray = _to_gray_uint8(img)
+    freq = Counter(gray.ravel().tolist())
+    sorted_symbols = [s for s, _ in freq.most_common()]
+    bits_needed = max(1, math.ceil(
+        math.log2(len(sorted_symbols) or 1)))
+    codes = {sym: format(idx, f"0{bits_needed}b")
+             for idx, sym in enumerate(sorted_symbols)}
+    bitstring = "".join(codes[int(v)] for v in gray.ravel())
+    compressed_bits = len(bitstring)
+    original_bits = gray.size * 8
+    return {
+        "codes": codes,
+        "bitstring": bitstring,
+        "bits_len": bits_needed,
+        "ratio": _compression_ratio(original_bits,
+                                    compressed_bits),
+        "original_bits": original_bits,
+        "compressed_bits": compressed_bits,
+        "shape": gray.shape,
+    }
+\end{lstlisting}
+
+\begin{lstlisting}
+def symbol_based_decode(bitstring: str, codes: dict,
+                        shape):
+    reverse = {v: k for k, v in codes.items()}
+    bits_len = max(len(k) for k in reverse.keys())
+    values = []
+    for i in range(0, len(bitstring), bits_len):
+        chunk = bitstring[i:i + bits_len]
+        if chunk in reverse:
+            values.append(reverse[chunk])
+    arr = np.array(values, dtype=np.uint8)
+    target = shape[0] * shape[1]
+    if arr.size < target:
+        arr = np.pad(arr, (0, target - arr.size),
+                     mode="edge")
+    if arr.size > target:
+        arr = arr[:target]
+    return arr.reshape(shape)
+\end{lstlisting}
+
+\subsubsection*{Bit-Planes: \texttt{bit\_planes(img)}}
+
+\begin{lstlisting}
+def bit_planes(img):
+    gray = _to_gray_uint8(img)
+    planes = []
+    for i in range(8):
+        plane = ((gray >> i) & 1) * 255
+        planes.append(plane.astype(np.float32))
+    reconstructed = sum(((planes[i] > 0).astype(np.uint8)
+                         << i) for i in range(8)).astype(np.float32)
+    return planes, reconstructed
+\end{lstlisting}
+
+\begin{itemize}
+    \item Extracts each bit as a separate plane (0 or 255).
+    \item Reconstructs by shifting planes back and summing.
+\end{itemize}
+
+\subsubsection*{DCT Utility: \texttt{\_dct\_matrix(n=8)} and Global Matrices}
+
+\begin{lstlisting}
+def _dct_matrix(n=8):
+    C = np.zeros((n, n))
+    for k in range(n):
+        for i in range(n):
+            alpha = math.sqrt(1 / n) if k == 0 \
+                    else math.sqrt(2 / n)
+            C[k, i] = alpha * math.cos(
+                (math.pi * (2 * i + 1) * k) / (2 * n)
+            )
+    return C
+
+DCT_MATRIX = _dct_matrix()
+DCT_MATRIX_T = DCT_MATRIX.T
+\end{lstlisting}
+
+\begin{itemize}
+    \item Builds the 1D DCT transform matrix for 8-point DCT.
+    \item Precomputes matrix and its transpose to be reused if needed.
+\end{itemize}
+
+\subsubsection*{\texttt{dct\_compress(img, keep\_ratio=0.5)}}
+
+\begin{lstlisting}
+def dct_compress(img, keep_ratio: float = 0.5):
+    gray = _to_gray_uint8(img)
+    h, w = gray.shape
+    h8, w8 = h - (h % 8), w - (w % 8)
+    gray = gray[:h8, :w8]
+    reconstructed = np.zeros_like(gray, dtype=np.float32)
+    total_coeffs = kept = 0
+    threshold = None
+    for y in range(0, h8, 8):
+        for x in range(0, w8, 8):
+            block = gray[y:y+8, x:x+8].astype(np.float32) - 128
+            dct = cv2.dct(block)
+            flat = np.abs(dct).ravel()
+            total_coeffs += flat.size
+            k = max(1, int(flat.size * keep_ratio))
+            threshold = np.partition(flat, -k)[-k]
+            mask = (np.abs(dct) >= threshold).astype(np.float32)
+            kept += int(np.count_nonzero(mask))
+            dct_filtered = dct * mask
+            block_rec = cv2.idct(dct_filtered) + 128
+            reconstructed[y:y+8, x:x+8] = block_rec
+    compressed_bits = kept * 16
+    original_bits = gray.size * 8
+    return {
+        "image": reconstructed,
+        "ratio": _compression_ratio(original_bits,
+                                    compressed_bits),
+        "kept_coefficients": kept,
+        "total_coefficients": total_coeffs,
+        "threshold": threshold,
+    }
+\end{lstlisting}
+
+\begin{itemize}
+    \item For each 8x8 block, keeps only the largest \texttt{keep\_ratio} of coefficients (by magnitude).
+    \item Approximates bit cost by assuming 16 bits per kept coefficient.
+\end{itemize}
+
+\subsubsection*{Predictive Coding: \texttt{predictive\_encode} / \texttt{predictive\_decode}}
+
+\begin{lstlisting}
+def predictive_encode(img):
+    gray = _to_gray_uint8(img)
+    residual = np.zeros_like(gray, dtype=np.int16)
+    predictor = np.zeros_like(gray, dtype=np.uint8)
+    for y in range(gray.shape[0]):
+        for x in range(gray.shape[1]):
+            pred = gray[y, x - 1] if x > 0 else 0
+            predictor[y, x] = pred
+            residual[y, x] = int(gray[y, x]) - int(pred)
+    compressed_bits = residual.size * 4  # assume entropy coding halves size
+    ratio = _compression_ratio(gray.size * 8, compressed_bits)
+    return {"residual": residual,
+            "predictor": predictor,
+            "ratio": ratio}
+\end{lstlisting}
+
+\begin{lstlisting}
+def predictive_decode(residual):
+    h, w = residual.shape
+    reconstructed = np.zeros((h, w), dtype=np.int16)
+    for y in range(h):
+        for x in range(w):
+            pred = reconstructed[y, x - 1] if x > 0 else 0
+            reconstructed[y, x] = pred + residual[y, x]
+    return np.clip(reconstructed, 0, 255).astype(np.uint8)
+\end{lstlisting}
+
+\subsubsection*{Haar Wavelet: \texttt{haar\_wavelet\_transform} / \texttt{haar\_wavelet\_inverse}}
+
+\begin{lstlisting}
+def haar_wavelet_transform(img):
+    gray = _to_gray_uint8(img).astype(np.float32)
+    h, w = gray.shape
+    h2, w2 = (h + 1) // 2, (w + 1) // 2
+    approx = np.zeros((h2, w2), dtype=np.float32)
+    horiz = np.zeros_like(approx)
+    vert = np.zeros_like(approx)
+    diag = np.zeros_like(approx)
+    for y in range(0, h, 2):
+        for x in range(0, w, 2):
+            a = gray[y, x]
+            b = gray[y, x + 1] if x + 1 < w else a
+            c = gray[y + 1, x] if y + 1 < h else a
+            d = gray[y + 1, x + 1] \
+                if (y + 1 < h and x + 1 < w) else a
+            idx_y = y // 2
+            idx_x = x // 2
+            approx[idx_y, idx_x] = (a + b + c + d) / 4
+            horiz[idx_y, idx_x] = (a + c - b - d) / 4
+            vert[idx_y, idx_x] = (a + b - c - d) / 4
+            diag[idx_y, idx_x] = (a - b - c + d) / 4
+    return approx, horiz, vert, diag, (h, w)
+\end{lstlisting}
+
+\begin{lstlisting}
+def haar_wavelet_inverse(approx, horiz, vert, diag,
+                         original_shape=None):
+    h2, w2 = approx.shape
+    h, w = h2 * 2, w2 * 2
+    reconstructed = np.zeros((h, w), dtype=np.float32)
+    for y in range(h2):
+        for x in range(w2):
+            a = approx[y, x] + horiz[y, x] + vert[y, x] + diag[y, x]
+            b = approx[y, x] - horiz[y, x] + vert[y, x] - diag[y, x]
+            c = approx[y, x] + horiz[y, x] - vert[y, x] - diag[y, x]
+            d = approx[y, x] - horiz[y, x] - vert[y, x] + diag[y, x]
+            reconstructed[2 * y, 2 * x] = a
+            reconstructed[2 * y, 2 * x + 1] = b
+            reconstructed[2 * y + 1, 2 * x] = c
+            reconstructed[2 * y + 1, 2 * x + 1] = d
+    reconstructed = np.clip(reconstructed, 0, 255)
+    if original_shape:
+        oh, ow = original_shape
+        return reconstructed[:oh, :ow]
+    return reconstructed
+\end{lstlisting}
+
+\subsection{\texttt{server.py} (Flask Web API)}
+
+\subsubsection*{Flask App Setup}
+
+\begin{lstlisting}
+COMPRESSION_MAX_PIXELS = 200_000
+
+app = Flask(__name__, static_folder="static",
+            static_url_path="/static")
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{COMPRESSION\_MAX\_PIXELS} limits image size used for compression demos to keep responses fast.
+    \item \texttt{static\_folder} and \texttt{static\_url\_path} tell Flask where to serve \texttt{index.html} and assets from.
+\end{itemize}
+
+\subsubsection*{\texttt{\_decode\_image(data\_url, max\_dim=1600)}}
+
+\begin{lstlisting}
+def _decode_image(data_url: str, max_dim: int = 1600) \
+        -> tuple[np.ndarray, dict]:
+    """Decode base64 data URL to RGB float32 numpy array,
+    with optional downscale for performance."""
+    if "," in data_url:
+        data_url = data_url.split(",", 1)[1]
+    img_bytes = base64.b64decode(data_url)
+    buf = np.frombuffer(img_bytes, np.uint8)
+    bgr = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    if bgr is None:
+        raise ValueError("Failed to decode image.")
+    h, w = bgr.shape[:2]
+    meta = {"downsized": False,
+            "original_size": (w, h)}
+    if max(h, w) > max_dim:
+        ratio = max_dim / max(h, w)
+        new_w, new_h = int(w * ratio), int(h * ratio)
+        bgr = cv2.resize(bgr, (new_w, new_h),
+                         interpolation=cv2.INTER_AREA)
+        meta["downsized"] = True
+        meta["new_size"] = (new_w, new_h)
+    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    return rgb.astype(np.float32), meta
+\end{lstlisting}
+
+\begin{itemize}
+    \item Strips the \texttt{"data:image/...;base64,"} prefix.
+    \item Base64-decodes and uses \texttt{cv2.imdecode} to get a BGR image.
+    \item Optionally downsizes to at most \texttt{max\_dim} pixels in the larger dimension.
+    \item Returns the RGB float32 array and a metadata dict with resizing info.
+\end{itemize}
+
+\subsubsection*{\texttt{\_encode\_image(img)}}
+
+\begin{lstlisting}
+def _encode_image(img: np.ndarray) -> str:
+    """Encode numpy image to base64 PNG data URL."""
+    if img.ndim == 2:
+        img_to_save = cv2.cvtColor(io_utils.ensure_uint8(img),
+                                   cv2.COLOR_GRAY2RGB)
+    else:
+        img_to_save = cv2.cvtColor(io_utils.ensure_uint8(img),
+                                   cv2.COLOR_RGB2BGR)
+    success, buffer = cv2.imencode(".png", img_to_save)
+    if not success:
+        raise ValueError("Failed to encode image.")
+    b64 = base64.b64encode(buffer).decode("utf-8")
+    return f"data:image/png;base64,{b64}"
+\end{lstlisting}
+
+\begin{itemize}
+    \item Ensures grayscale images are converted to 3-channel RGB before saving.
+    \item Encodes to PNG, then base64, returning a full data URL.
+\end{itemize}
+
+\subsubsection*{\texttt{\_process\_request(img, action, params, decode\_meta)}}
+
+\begin{lstlisting}
+def _process_request(img: np.ndarray, action: str,
+                     params: dict, decode_meta: dict
+                     ) -> Tuple[np.ndarray, dict]:
+    """Apply requested operation and return (image, extra_info)."""
+    extra = {}
+    if decode_meta.get("downsized"):
+        extra["downsized_from"] = decode_meta["original_size"]
+        extra["processed_size"] = decode_meta["new_size"]
+    gray = basic_ops.rgb_to_grayscale(img)
+    act = action.lower()
+    ...
+\end{lstlisting}
+
+\begin{itemize}
+    \item Central dispatcher for all actions from the web UI.
+    \item Creates an \texttt{extra} dictionary to send metadata back (histograms, ratios, etc.).
+    \item For each \texttt{action} string, it calls the appropriate function in \texttt{basic\_ops}, \texttt{filters}, \texttt{geometry}, \texttt{interp}, or \texttt{compress}.
+    \item Returns:
+    \begin{itemize}
+        \item The processed image.
+        \item The \texttt{extra} information dictionary.
+    \end{itemize}
+\end{itemize}
+
+Compression actions use a guard:
+
+\begin{lstlisting}
+if act in {"huffman", "golomb", "arithmetic", "lzw",
+           "rle", "symbol", "bitplane", "dct",
+           "predictive", "wavelet"}:
+    if gray.size > COMPRESSION_MAX_PIXELS:
+        ...
+        img = cv2.resize(img, (new_w, new_h),
+                         interpolation=cv2.INTER_AREA)
+        gray = basic_ops.rgb_to_grayscale(img)
+        extra["compression_downscaled_from"] = (w, h)
+        extra["compression_size"] = (new_w, new_h)
+\end{lstlisting}
+
+\begin{itemize}
+    \item Ensures compression algorithms never receive a huge image (for performance reasons).
+\end{itemize}
+
+\subsubsection*{Routes: \texttt{index} and \texttt{/api/process}}
+
+\begin{lstlisting}
+@app.route("/")
+def index():
+    return send_from_directory(app.static_folder,
+                               "index.html")
+\end{lstlisting}
+
+\begin{itemize}
+    \item Serves the web app's front-end HTML.
+\end{itemize}
+
+\begin{lstlisting}
+@app.route("/api/process", methods=["POST"])
+def process_image():
+    try:
+        payload = request.get_json(force=True)
+        img_data = payload.get("image")
+        action = payload.get("action")
+        params = payload.get("params", {})
+        if img_data is None or action is None:
+            return jsonify({"error": "Missing image or action."}), 400
+
+        img, decode_meta = _decode_image(img_data)
+        result_img, extra = _process_request(img, action,
+                                             params, decode_meta)
+        encoded = _encode_image(result_img)
+        info = io_utils.info(result_img)
+        return jsonify({"image": encoded,
+                        "info": info,
+                        "extra": extra})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), 500
+\end{lstlisting}
+
+\begin{itemize}
+    \item Reads JSON payload from client (image data URL + action + params).
+    \item Decodes the image, processes it, encodes result back to data URL.
+    \item Returns image, basic info, and extra metadata as JSON.
+    \item Uses proper HTTP status codes for errors (400 for bad input, 500 for unexpected errors).
+\end{itemize}
+
+\subsection{\texttt{app.py} (Tkinter Entry Point)}
+
+\subsubsection*{\texttt{main()}}
+
+\begin{lstlisting}
+import tkinter as tk
+
+from ui.controls import ImageApp
+
+def main():
+    root = tk.Tk()
+    root.title("Image Processing Studio")
+    root.geometry("1100x720")
+    root.configure(bg="#111827")
+    ImageApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+\end{lstlisting}
+
+\begin{itemize}
+    \item Creates the root Tk window with a title, fixed geometry, and dark background.
+    \item Instantiates \texttt{ImageApp}, which builds all controls inside the root.
+    \item Starts the Tk event loop via \texttt{root.mainloop()}, keeping the application running.
+\end{itemize}
+
+% =====================================================
+% 5. END-TO-END FLOW
+% =====================================================
+
+\section{End-to-End Flow}\label{sec:flow}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Load}: Desktop uses a file dialog (\texttt{controls.load\_image} + \texttt{io\_utils.load\_image}); web API decodes base64 in \texttt{server.\_decode\_image}.
+    \item \textbf{Dispatch}: User action maps to a processing function (\texttt{\_process\_request} for web; button handlers in \texttt{controls.py} for desktop).
+    \item \textbf{Process}: cv2-backed operations run in \texttt{basic\_ops}, \texttt{filters}, \texttt{geometry}, \texttt{interp}; compression uses \texttt{compress}.
+    \item \textbf{Return}: Desktop shows via \texttt{ImagePreview}; web re-encodes PNG data URL and returns JSON with extras (histograms, ratios, scale guards).
+    \item \textbf{Display}: UI updates status/info panels; web frontend renders the returned data URL and metadata.
+\end{enumerate}
+
+% =====================================================
+% 6. CONCLUSION
+% =====================================================
+
+\section{Conclusion}
+
+This document describes how the Tkinter-based \textbf{Image Processing Studio} UI, the processing modules, and the Flask web API orchestrate a wide variety of image processing and compression algorithms implemented in the \texttt{processing} package. The application combines:
+
+\begin{itemize}
+    \item A structured UI with labelled sections and clear actions.
+    \item A Matplotlib-based preview system to visualize original and processed images, as well as histograms.
+    \item A collection of geometric transforms, filters, histogram operations, and compression methods, each accessible via single-click buttons or web API calls.
+\end{itemize}
+
+The result is an educational and interactive environment for experimenting with image processing concepts and compression techniques, both on the desktop and through a browser.
+
+\end{document}

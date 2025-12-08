@@ -1,0 +1,31 @@
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {section}{\numberline {2}Desktop UI Layer (Tkinter)}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}\texttt {ImageApp} Frame (controls.py)}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Layout Construction (\_build\_layout)}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Control Sections (Labelled Boxes)}{5}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Core Helper Methods}{10}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Major Actions}{10}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Compression Integration (\texttt {compress\_action})}{14}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}ImagePreview Class (preview.py)}{16}{subsection.2.7}%
+\contentsline {section}{\numberline {3}Compression and Processing Algorithms (High-Level)}{18}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Huffman Coding}{18}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Golomb-Rice Coding}{18}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Arithmetic Coding (Entropy-Based Estimate)}{19}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}LZW (Lempel--Ziv--Welch)}{19}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Run-Length Encoding (RLE)}{19}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Symbol-Based Fixed-Length Coding}{20}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Bit-Plane Coding}{20}{subsection.3.7}%
+\contentsline {subsection}{\numberline {3.8}Block DCT Coding}{20}{subsection.3.8}%
+\contentsline {subsection}{\numberline {3.9}Predictive Coding (DPCM)}{20}{subsection.3.9}%
+\contentsline {subsection}{\numberline {3.10}Haar Wavelet Transform (1 Level)}{21}{subsection.3.10}%
+\contentsline {section}{\numberline {4}Detailed Function Reference}{21}{section.4}%
+\contentsline {subsection}{\numberline {4.1}\texttt {basic\_ops.py} (Basic Operations)}{21}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}\texttt {filters.py} (Filtering Operations)}{23}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}\texttt {geometry.py} (Geometric Transforms)}{25}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}\texttt {interp.py} (Interpolation / Resampling)}{28}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}\texttt {io\_utils.py} (Image I/O Helpers)}{28}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}\texttt {compress.py} (Compression Algorithms)}{29}{subsection.4.6}%
+\contentsline {subsection}{\numberline {4.7}\texttt {server.py} (Flask Web API)}{40}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}\texttt {app.py} (Tkinter Entry Point)}{43}{subsection.4.8}%
+\contentsline {section}{\numberline {5}End-to-End Flow}{44}{section.5}%
+\contentsline {section}{\numberline {6}Conclusion}{44}{section.6}%

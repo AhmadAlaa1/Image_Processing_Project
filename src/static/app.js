@@ -11,6 +11,7 @@ const histCanvas = document.getElementById("histCanvas");
 let histCtx = histCanvas?.getContext("2d");
 let imageDataUrl = null;
 let lastMode = "processed"; // or "original"
+let originalInfo = null; // { width, height, size, type }
 
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
@@ -96,13 +97,34 @@ function renderHistogram(histArr) {
   }
 }
 
+function clearHistogram() {
+  if (histCtx) histCtx.clearRect(0, 0, histCanvas.width, histCanvas.height);
+  histInfo.textContent = "";
+}
+
+function resetToOriginal() {
+  if (!originalImg.src) {
+    setStatus("Load an image first.", true);
+    return;
+  }
+  stageImage.src = originalImg.src;
+  processedImg.src = "";
+  lastMode = "original";
+  showOriginalBtn?.classList.add("active");
+  showProcessedBtn?.classList.remove("active");
+  clearHistogram();
+  compInfo.textContent = "";
+  infoBox.textContent = "";
+  setStatus("Reset to original image.");
+}
+
 async function sendAction(action, params = {}) {
   if (!imageDataUrl) {
     setStatus("Please choose an image first.", true);
     return;
   }
   setStatus(`Processing: ${action}...`);
-  histInfo.textContent = "";
+  clearHistogram();
   compInfo.textContent = "";
   try {
     const res = await fetch("/api/process", {
@@ -114,9 +136,10 @@ async function sendAction(action, params = {}) {
     if (!res.ok) throw new Error(data.error || "Server error");
     if (data.image) {
       processedImg.src = data.image;
-      if (lastMode === "processed") {
-        stageImage.src = data.image;
-      }
+      stageImage.src = data.image;
+      lastMode = "processed";
+      showProcessedBtn?.classList.add("active");
+      showOriginalBtn?.classList.remove("active");
     }
     if (data.info) {
       const i = data.info;
@@ -149,13 +172,16 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
     const raw = await readFile(file);
     const { width, height } = await getImageDimensions(raw);
     imageDataUrl = await downscaleIfLarge(raw);
+    originalInfo = { width, height, size: file.size, type: resolveFileType(file) };
     originalImg.src = imageDataUrl;
     processedImg.src = "";
     stageImage.src = imageDataUrl;
     lastMode = "original";
-    setFileMeta({ width, height, size: file.size, type: resolveFileType(file) });
+    showOriginalBtn?.classList.add("active");
+    showProcessedBtn?.classList.remove("active");
+    setFileMeta(originalInfo);
     infoBox.textContent = "";
-    histInfo.textContent = "";
+    clearHistogram();
     compInfo.textContent = "";
     setStatus("Image loaded.");
   } catch (err) {
@@ -198,6 +224,11 @@ if (showOriginalBtn && showProcessedBtn) {
       showOriginalBtn.classList.remove("active");
     }
   });
+}
+
+const resetBtn = document.getElementById("resetBtn");
+if (resetBtn) {
+  resetBtn.addEventListener("click", resetToOriginal);
 }
 
 // Wire buttons

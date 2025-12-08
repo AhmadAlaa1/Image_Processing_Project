@@ -81,6 +81,8 @@ body {
   cursor: pointer;
 }
 .pill.active { background: #2563eb; color: white; border-color: #2563eb; }
+.pill.danger { border-color: #4b1e2c; background: #2b1a1f; color: #fca5a5; }
+.pill.danger:hover { background: #b91c1c; color: #fff; border-color: #b91c1c; }
 .stage-footer { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 8px; color: #cbd5e1; font-size: 13px; }
 .filename { color: #9ca3af; font-size: 13px; }
 .status { color: #10b981; font-weight: 700; font-size: 13px; }

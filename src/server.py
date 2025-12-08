@@ -55,7 +55,7 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if decode_meta.get("downsized"):
         extra["downsized_from"] = decode_meta["original_size"]
         extra["processed_size"] = decode_meta["new_size"]
-    gray = basic_ops.ensure_grayscale(img)
+    gray = basic_ops.rgb_to_grayscale(img)
     act = action.lower()
 
     if act == "grayscale":
