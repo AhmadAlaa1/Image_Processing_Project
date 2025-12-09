@@ -3,7 +3,6 @@ from . import basic_ops
 
 
 def bilinear(img, new_width, new_height):
-
     gray = basic_ops.ensure_grayscale(img)
     w = max(1, int(new_width)) 
     h = max(1, int(new_height))
@@ -11,7 +10,6 @@ def bilinear(img, new_width, new_height):
 
 
 def nearest(img, new_width, new_height):
-
     gray = basic_ops.ensure_grayscale(img)
     w = max(1, int(new_width)) 
     h = max(1, int(new_height))
@@ -19,7 +17,6 @@ def nearest(img, new_width, new_height):
 
 
 def bicubic(img, new_width, new_height):
-
     gray = basic_ops.ensure_grayscale(img)
     w = max(1, int(new_width)) 
     h = max(1, int(new_height))

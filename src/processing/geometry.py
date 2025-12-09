@@ -4,34 +4,20 @@ import numpy as np
 
 MAX_OUTPUT_PIXELS = 50_000_000
 
-def apply_affine(img, matrix, output_shape=None):
-    """Apply a 2x3 affine with cv2.warpAffine; constant padding keeps edges clean."""
-    h, w = img.shape[:2]
-    out_h, out_w = output_shape if output_shape is not None else (h, w)
-    m = np.array(matrix, dtype=np.float32)
-    return cv2.warpAffine(img, m, (out_w, out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-
-
 def translate(img, tx: float, ty: float):
-    """Shift the image by tx, ty pixels using an affine matrix."""
-    mat = np.array([[1, 0, tx], [0, 1, ty]], dtype=np.float32)
-    return apply_affine(img, mat)
+    h, w = img.shape[:2]
+    mat = np.array([[1, 0, tx],
+                    [0, 1, ty]], dtype=np.float32)
+    return cv2.warpAffine(img,mat,(w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0 )
 
 
 def scale(img, sx: float, sy: float):
-    """Scale width/height by sx, sy with cv2.resize (bilinear); caps huge outputs."""
     new_w = max(1, int(round(img.shape[1] * sx)))
     new_h = max(1, int(round(img.shape[0] * sy)))
-    pixels = new_w * new_h
-    if pixels > MAX_OUTPUT_PIXELS:
-        factor = (MAX_OUTPUT_PIXELS / pixels) ** 0.5
-        new_w = max(1, int(round(img.shape[1] * sx * factor)))
-        new_h = max(1, int(round(img.shape[0] * sy * factor)))
     return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
 
 def rotate(img, angle_deg: float):
-    """Rotate around center by angle_deg using cv2.getRotationMatrix2D + warpAffine."""
     h, w = img.shape[:2]
     center = (w / 2.0, h / 2.0)
     mat = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
@@ -39,22 +25,28 @@ def rotate(img, angle_deg: float):
 
 
 def shear_x(img, shx: float):
-    """Shear horizontally by shx and expand canvas so content stays visible."""
     h, w = img.shape[:2]
+
+    # How far can the top/bottom rows move in X?
+    # Top row y=0 → shift = shx * 0 = 0
+    # Bottom row y=h-1 → shift = shx * (h-1)
     min_x = min(0, shx * (h - 1))
     max_x = (w - 1) + max(0, shx * (h - 1))
-    out_w = int(round(max_x - min_x + 1))
+
+    # New width after shear
+    out_w = int(round(max_x - min_x + 1)) 
+
+    # Translate so that the minimum x becomes 0
     tx = -min_x
     mat = np.array([[1, shx, tx], [0, 1, 0]], dtype=np.float32)
-    return apply_affine(img, mat, output_shape=(h, out_w))
+    return cv2.warpAffine(img, mat, (out_w,h) , flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
 
 
 def shear_y(img, shy: float):
-    """Shear vertically by shy and expand canvas so content stays visible."""
     h, w = img.shape[:2]
     min_y = min(0, shy * (w - 1))
     max_y = (h - 1) + max(0, shy * (w - 1))
     out_h = int(round(max_y - min_y + 1))
     ty = -min_y
     mat = np.array([[1, 0, 0], [shy, 1, ty]], dtype=np.float32)
-    return apply_affine(img, mat, output_shape=(out_h, w))
+    return cv2.warpAffine(img, mat, (w,out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
