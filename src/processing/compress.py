@@ -326,6 +326,8 @@ def dct_compress(img, keep_ratio: float = 0.5):
         "kept_coefficients": kept,
         "total_coefficients": total_coeffs,
         "threshold": threshold,
+        "original_bits": original_bits,
+        "compressed_bits": compressed_bits,
     }
 
 
@@ -339,9 +341,8 @@ def predictive_encode(img):
             pred = gray[y, x - 1] if x > 0 else 0
             predictor[y, x] = pred
             residual[y, x] = int(gray[y, x]) - int(pred)
-    compressed_bits = residual.size * 4  # assume entropy coding halves size
-    ratio = _compression_ratio(gray.size * 8, compressed_bits)
-    return {"residual": residual, "predictor": predictor, "ratio": ratio}
+    bits = residual.size * 4
+    return {"residual": residual, "predictor": predictor, "ratio": _compression_ratio(gray.size * 8, bits), "original_bits": gray.size * 8, "compressed_bits": bits}
 
 
 def predictive_decode(residual):

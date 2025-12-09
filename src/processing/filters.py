@@ -5,12 +5,13 @@ from . import basic_ops
 
 
 def convolve(img, kernel):
-    """Convolution via OpenCV with replicate padding."""
+    """Filter with the given kernel using replicate borders."""
     gray = basic_ops.ensure_grayscale(img)
     return cv2.filter2D(gray, ddepth=cv2.CV_32F, kernel=kernel, borderType=cv2.BORDER_REPLICATE)
 
 
 def gaussian_blur(img, size: int = 19, sigma: float = 3.0):
+    """Gaussian blur with an odd kernel size."""
     gray = basic_ops.ensure_grayscale(img)
     k = size if size % 2 == 1 else size + 1
     k = max(3, k)
@@ -18,19 +19,22 @@ def gaussian_blur(img, size: int = 19, sigma: float = 3.0):
 
 
 def median_filter(img, size: int = 7):
+    """Median blur; converts to 8-bit for OpenCV then returns result."""
     gray = basic_ops.ensure_grayscale(img)
     k = size if size % 2 == 1 else size + 1
     k = max(3, k)
     img_u8 = cv2.convertScaleAbs(gray)
-    return cv2.medianBlur(img_u8, k).astype(np.float32)
+    return cv2.medianBlur(img_u8, k)
 
 
 def laplacian_filter(img):
+    """Laplacian edge response."""
     gray = basic_ops.ensure_grayscale(img)
     return cv2.Laplacian(gray, ddepth=cv2.CV_32F, ksize=3, borderType=cv2.BORDER_REPLICATE)
 
 
 def sobel_filter(img):
+    """Sobel magnitude from x and y derivatives."""
     gray = basic_ops.ensure_grayscale(img)
     gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_REPLICATE)
     gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_REPLICATE)
@@ -38,6 +42,7 @@ def sobel_filter(img):
 
 
 def gradient_first_derivative(img):
+    """First-derivative gradient using 1x3 Sobel kernels."""
     gray = basic_ops.ensure_grayscale(img)
     gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=1, borderType=cv2.BORDER_REPLICATE)
     gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=1, borderType=cv2.BORDER_REPLICATE)

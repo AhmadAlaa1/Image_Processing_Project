@@ -130,6 +130,8 @@ body {
   cursor: pointer;
 }
 .btn-grid button:hover { background: #2563eb; color: white; transform: translateY(-1px); }
+.toggle { display: flex; align-items: center; gap: 6px; color: #cbd5e1; font-size: 13px; margin: 4px 0 8px 0; }
+.toggle input { accent-color: #2563eb; }
 pre {
   background: #10131a;
   border: 1px solid #1f2632;

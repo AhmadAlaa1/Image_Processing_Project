@@ -15,7 +15,7 @@ app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 
 # ---------- Helpers ---------- #
-def _decode_image(data_url: str, max_dim: int = 1600) -> tuple[np.ndarray, dict]:
+def _decode_image(data_url: str, max_dim: int | None = 1600) -> tuple[np.ndarray, dict]:
     """Decode base64 data URL to RGB float32 numpy array, with optional downscale for performance."""
     if "," in data_url:
         data_url = data_url.split(",", 1)[1]
@@ -26,7 +26,7 @@ def _decode_image(data_url: str, max_dim: int = 1600) -> tuple[np.ndarray, dict]
         raise ValueError("Failed to decode image.")
     h, w = bgr.shape[:2]
     meta = {"downsized": False, "original_size": (w, h)}
-    if max(h, w) > max_dim:
+    if max_dim is not None and max(h, w) > max_dim:
         ratio = max_dim / max(h, w)
         new_w, new_h = int(w * ratio), int(h * ratio)
         bgr = cv2.resize(bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
@@ -102,7 +102,13 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         method = act.split("_", 1)[1]
         new_w = int(params.get("width", gray.shape[1]))
         new_h = int(params.get("height", gray.shape[0]))
-        return interp.resize(gray, new_w, new_h, method=method), extra
+        if method == "nearest":
+            return interp.resize_nearest(gray, new_w, new_h), extra
+        if method == "bilinear":
+            return interp.resize_bilinear(gray, new_w, new_h), extra
+        if method == "bicubic":
+            return interp.resize_bicubic(gray, new_w, new_h), extra
+        return interp.resize_bilinear(gray, new_w, new_h), extra
     if act == "crop":
         return basic_ops.crop(img, int(params.get("x", 0)), int(params.get("y", 0)),
                               int(params.get("w", img.shape[1])), int(params.get("h", img.shape[0]))), extra
@@ -130,7 +136,8 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
 
     # Compression operations
     if act in {"huffman", "golomb", "arithmetic", "lzw", "rle", "symbol", "bitplane", "dct", "predictive", "wavelet"}:
-        if gray.size > COMPRESSION_MAX_PIXELS:
+        full_res = bool(params.get("full_res"))
+        if gray.size > COMPRESSION_MAX_PIXELS and not full_res:
             h, w = gray.shape
             scale = (COMPRESSION_MAX_PIXELS / (h * w)) ** 0.5
             new_w = max(1, int(w * scale))
@@ -142,32 +149,32 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if act == "huffman":
         data = compress.huffman_compress(gray)
         recon = compress.huffman_decompress(data["bitstring"], data["tree"], gray.shape)
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "golomb":
         data = compress.golomb_rice_encode(gray, k=2)
         recon = compress.golomb_rice_decode(data["bitstring"], gray.shape, k=2)
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "arithmetic":
         data = compress.arithmetic_encode(gray)
         recon = compress.arithmetic_decode(data.get("code"), data)
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "lzw":
         data = compress.lzw_encode(gray)
         recon = compress.lzw_decode(data["codes"], gray.shape)
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "rle":
         data = compress.rle_encode(gray)
         recon = compress.rle_decode(data["pairs"], gray.shape)
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "symbol":
         data = compress.symbol_based_encode(gray)
         recon = compress.symbol_based_decode(data["bitstring"], data["codes"], gray.shape)
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "bitplane":
         planes, recon = compress.bit_planes(gray)
@@ -175,12 +182,12 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         return recon, extra
     if act == "dct":
         data = compress.dct_compress(gray)
-        extra.update({"ratio": data["ratio"], "kept": data["kept_coefficients"], "total": data["total_coefficients"]})
+        extra.update({"ratio": data["ratio"], "kept": data["kept_coefficients"], "total": data["total_coefficients"], "original_bits": data.get("original_bits"), "compressed_bits": data.get("compressed_bits")})
         return data["image"], extra
     if act == "predictive":
         data = compress.predictive_encode(gray)
         recon = compress.predictive_decode(data["residual"])
-        extra.update({"ratio": data["ratio"]})
+        extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
         return recon, extra
     if act == "wavelet":
         approx, horiz, vert, diag, orig_shape = compress.haar_wavelet_transform(gray)
@@ -207,7 +214,11 @@ def process_image():
         if img_data is None or action is None:
             return jsonify({"error": "Missing image or action."}), 400
 
-        img, decode_meta = _decode_image(img_data)
+        compress_actions = {"huffman", "golomb", "arithmetic", "lzw", "rle", "symbol", "bitplane", "dct", "predictive", "wavelet"}
+        full_res = bool(params.get("full_res")) if action in compress_actions else False
+        decode_max_dim = None if full_res and action in compress_actions else 1600
+
+        img, decode_meta = _decode_image(img_data, max_dim=decode_max_dim)
         result_img, extra = _process_request(img, action, params, decode_meta)
         encoded = _encode_image(result_img)
         info = io_utils.info(result_img)

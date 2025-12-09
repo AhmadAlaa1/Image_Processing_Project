@@ -46,6 +46,12 @@ function formatBytes(bytes) {
   return `${rounded} ${units[power]}`;
 }
 
+function formatBits(bits) {
+  if (!Number.isFinite(bits)) return "—";
+  const bytes = bits / 8;
+  return `${bits} bits (${formatBytes(bytes)})`;
+}
+
 function resolveFileType(file) {
   if (file.type) return file.type;
   const parts = file.name.split(".");
@@ -53,13 +59,19 @@ function resolveFileType(file) {
   return "Unknown";
 }
 
-function setFileMeta({ width, height, size, type }) {
+function setFileMeta(meta, compressedBits) {
+  const { width, height, size, type } = meta || {};
   if (!fileMeta) return;
   if (!width || !height) {
     fileMeta.textContent = "Resolution: — | Size: — | Type: —";
     return;
   }
-  fileMeta.textContent = `Resolution: ${width}x${height} | Size: ${formatBytes(size)} | Type: ${type}`;
+  const base = `Resolution: ${width}x${height} | Size: ${formatBytes(size)} | Type: ${type}`;
+  if (compressedBits !== undefined) {
+    fileMeta.textContent = `${base} | Compressed: ${formatBytes(compressedBits / 8)}`;
+  } else {
+    fileMeta.textContent = base;
+  }
 }
 
 function downscaleIfLarge(dataUrl, maxDim = 1400) {
@@ -151,11 +163,21 @@ async function sendAction(action, params = {}) {
         histInfo.textContent = `Assessment: ${data.extra.assessment}\nHistogram[0..5]: ${data.extra.histogram.slice(0,6)} ...`;
       }
       if (data.extra.ratio !== undefined) {
-        compInfo.textContent = `Compression ratio: ${data.extra.ratio.toFixed(2)}`;
+        const ob = data.extra.original_bits;
+        const cb = data.extra.compressed_bits;
+        const hasSizes = ob !== undefined && cb !== undefined;
+        const sizeLine = hasSizes ? ` (${formatBits(ob)} -> ${formatBits(cb)})` : "";
+        const downscaled = data.extra.compression_downscaled_from;
+        const downscaleNote = downscaled ? ` | Downscaled from ${downscaled[0]}x${downscaled[1]} for compression` : "";
+        compInfo.textContent = `Compression ratio: ${data.extra.ratio.toFixed(2)}${sizeLine}${downscaleNote}`;
       }
       if (data.extra.threshold !== undefined) {
         histInfo.textContent = `Binary threshold: ${data.extra.threshold.toFixed(2)}`;
       }
+    }
+    if (originalInfo) {
+      const cbits = data.extra ? data.extra.compressed_bits : undefined;
+      setFileMeta(originalInfo, cbits);
     }
     setStatus("Done.");
   } catch (err) {
@@ -255,6 +277,8 @@ document.querySelectorAll("button[data-action]").forEach((btn) => {
       params.y = parseInt(document.getElementById("cropY").value, 10);
       params.w = parseInt(document.getElementById("cropW").value, 10);
       params.h = parseInt(document.getElementById("cropH").value, 10);
+    } else if (action === "huffman" || action === "golomb" || action === "arithmetic" || action === "lzw" || action === "rle" || action === "symbol" || action === "bitplane" || action === "dct" || action === "predictive" || action === "wavelet") {
+      params.full_res = document.getElementById("fullResToggle")?.checked;
     }
     sendAction(action, params);
   });

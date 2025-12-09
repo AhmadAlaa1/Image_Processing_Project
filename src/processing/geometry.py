@@ -4,27 +4,21 @@ import numpy as np
 
 MAX_OUTPUT_PIXELS = 50_000_000
 
-_INTERP = {
-    "nearest": cv2.INTER_NEAREST,
-    "bilinear": cv2.INTER_LINEAR,
-    "bicubic": cv2.INTER_CUBIC,
-}
-
-
-def apply_affine(img, matrix, output_shape=None, method: str = "bilinear"):
-    """Affine warp via cv2.warpAffine with replicate padding."""
+def apply_affine(img, matrix, output_shape=None):
+    """Apply a 2x3 affine matrix with cv2.warpAffine and replicate padding."""
     h, w = img.shape[:2]
     out_h, out_w = output_shape if output_shape is not None else (h, w)
-    flags = _INTERP.get(method.lower(), cv2.INTER_LINEAR)
-    return cv2.warpAffine(img.astype(np.float32), matrix.astype(np.float32), (out_w, out_h), flags=flags, borderMode=cv2.BORDER_REPLICATE)
+    return cv2.warpAffine(img.astype(np.float32), matrix.astype(np.float32), (out_w, out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 
 
 def translate(img, tx: float, ty: float):
+    """Shift the image by tx, ty pixels using an affine matrix."""
     mat = np.array([[1, 0, tx], [0, 1, ty]], dtype=np.float32)
-    return apply_affine(img, mat, method="bilinear")
+    return apply_affine(img, mat)
 
 
 def scale(img, sx: float, sy: float):
+    """Scale width/height by sx, sy with cv2.resize. Caps output pixels at MAX_OUTPUT_PIXELS to avoid huge arrays. Falls back to bilinear interpolation. Uses float32 for consistent math."""
     new_w = max(1, int(round(img.shape[1] * sx)))
     new_h = max(1, int(round(img.shape[0] * sy)))
     pixels = new_w * new_h
@@ -36,6 +30,7 @@ def scale(img, sx: float, sy: float):
 
 
 def rotate(img, angle_deg: float):
+    """Rotate around the center by angle_deg degrees. Builds a cv2 rotation matrix and warps with bilinear sampling. Keeps the original canvas size. Uses replicate padding for edges."""
     h, w = img.shape[:2]
     center = (w / 2.0, h / 2.0)
     mat = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
@@ -43,12 +38,22 @@ def rotate(img, angle_deg: float):
 
 
 def shear_x(img, shx: float):
-    mat = np.array([[1, shx, 0], [0, 1, 0]], dtype=np.float32)
-    out_w = int(img.shape[1] + abs(shx) * img.shape[0])
-    return apply_affine(img, mat, output_shape=(img.shape[0], out_w), method="bilinear")
+    """Shear horizontally by shx and expand canvas so content stays visible."""
+    h, w = img.shape[:2]
+    min_x = min(0, shx * (h - 1))
+    max_x = (w - 1) + max(0, shx * (h - 1))
+    out_w = int(round(max_x - min_x + 1))
+    tx = -min_x
+    mat = np.array([[1, shx, tx], [0, 1, 0]], dtype=np.float32)
+    return apply_affine(img, mat, output_shape=(h, out_w))
 
 
 def shear_y(img, shy: float):
-    mat = np.array([[1, 0, 0], [shy, 1, 0]], dtype=np.float32)
-    out_h = int(img.shape[0] + abs(shy) * img.shape[1])
-    return apply_affine(img, mat, output_shape=(out_h, img.shape[1]), method="bilinear")
+    """Shear vertically by shy and expand canvas so content stays visible."""
+    h, w = img.shape[:2]
+    min_y = min(0, shy * (w - 1))
+    max_y = (h - 1) + max(0, shy * (w - 1))
+    out_h = int(round(max_y - min_y + 1))
+    ty = -min_y
+    mat = np.array([[1, 0, 0], [shy, 1, ty]], dtype=np.float32)
+    return apply_affine(img, mat, output_shape=(out_h, w))
