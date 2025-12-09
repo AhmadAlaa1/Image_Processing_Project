@@ -3,13 +3,6 @@ import numpy as np
 
 from . import basic_ops
 
-
-def convolve(img, kernel):
-    """Filter with the given kernel using replicate borders."""
-    gray = basic_ops.ensure_grayscale(img)
-    return cv2.filter2D(gray, ddepth=cv2.CV_32F, kernel=kernel, borderType=cv2.BORDER_REPLICATE)
-
-
 def gaussian_blur(img, size: int = 19, sigma: float = 3.0):
     """Gaussian blur with an odd kernel size."""
     gray = basic_ops.ensure_grayscale(img)
