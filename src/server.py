@@ -61,8 +61,9 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if act == "grayscale":
         return gray, extra
     if act == "binary":
-        binary, t = basic_ops.grayscale_to_binary(gray)
+        binary, t, note = basic_ops.grayscale_to_binary(gray)
         extra["threshold"] = t
+        extra["threshold_eval"] = note
         return binary, extra
     if act == "translate":
         tx = float(params.get("tx", 0))
@@ -103,12 +104,12 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         new_w = int(params.get("width", gray.shape[1]))
         new_h = int(params.get("height", gray.shape[0]))
         if method == "nearest":
-            return interp.resize_nearest(gray, new_w, new_h), extra
+            return interp.nearest(gray, new_width=new_w, new_height=new_h), extra
         if method == "bilinear":
-            return interp.resize_bilinear(gray, new_w, new_h), extra
+            return interp.bilinear(gray, new_width=new_w, new_height=new_h), extra
         if method == "bicubic":
-            return interp.resize_bicubic(gray, new_w, new_h), extra
-        return interp.resize_bilinear(gray, new_w, new_h), extra
+            return interp.bicubic(gray, new_width=new_w, new_height=new_h), extra
+        return interp.bilinear(gray, new_width=new_w, new_height=new_h), extra
     if act == "crop":
         return basic_ops.crop(img, int(params.get("x", 0)), int(params.get("y", 0)),
                               int(params.get("w", img.shape[1])), int(params.get("h", img.shape[0]))), extra

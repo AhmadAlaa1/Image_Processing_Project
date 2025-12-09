@@ -15,11 +15,18 @@ def ensure_grayscale(img):
 
 
 def grayscale_to_binary(img):
-    """Threshold at mean intensity and return mask plus threshold."""
+    """Binary mask using mean threshold plus a quick optimality check."""
     gray = ensure_grayscale(img)
     t = float(gray.mean())
     _, binary = cv2.threshold(gray, t, 255, cv2.THRESH_BINARY)
-    return binary, t
+    gray_u8 = cv2.convertScaleAbs(gray)
+    otsu_t, _ = cv2.threshold(gray_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    diff = abs(t - float(otsu_t))
+    if diff < 5:
+        eval_note = f"Threshold looks optimal (mean≈Otsu, diff={diff:.1f})."
+    else:
+        eval_note = f"Threshold likely suboptimal (mean vs Otsu diff={diff:.1f}); consider Otsu."
+    return binary, t, eval_note
 
 
 def crop(img, x, y, w, h):
@@ -34,16 +41,23 @@ def histogram(img):
 
 
 def histogram_goodness(hist):
-    """Tiny heuristic describing spread of nonzero bins."""
+    """Heuristic with a short justification about contrast/brightness spread."""
     total = np.sum(hist)
     if total == 0:
         return "Empty histogram."
     spread = np.count_nonzero(hist) / 256.0
-    if spread > 0.7:
-        return "Histogram is well-distributed; good contrast."
+    low_mass = float(np.sum(hist[:64])) / total
+    high_mass = float(np.sum(hist[192:])) / total
+    entropy = -np.sum((hist / total) * np.log2((hist / total) + 1e-9))
+    if spread > 0.7 and 0.1 < low_mass < 0.5 and 0.1 < high_mass < 0.5:
+        return f"Histogram is well-distributed (spread={spread:.2f}, entropy={entropy:.2f}); contrast looks good."
     if spread > 0.4:
-        return "Histogram is moderately spread; contrast is acceptable."
-    return "Histogram is concentrated; consider equalization to improve contrast."
+        return f"Histogram is moderately spread (spread={spread:.2f}); contrast is acceptable."
+    if low_mass > 0.6:
+        return f"Histogram is concentrated in dark tones (low_mass={low_mass:.2f}); image may be underexposed."
+    if high_mass > 0.6:
+        return f"Histogram is concentrated in bright tones (high_mass={high_mass:.2f}); image may be overexposed."
+    return f"Histogram is narrow (spread={spread:.2f}, entropy={entropy:.2f}); consider equalization to improve contrast."
 
 
 def histogram_equalization(img):

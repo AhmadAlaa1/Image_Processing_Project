@@ -5,10 +5,11 @@ import numpy as np
 MAX_OUTPUT_PIXELS = 50_000_000
 
 def apply_affine(img, matrix, output_shape=None):
-    """Apply a 2x3 affine matrix with cv2.warpAffine and replicate padding."""
+    """Apply a 2x3 affine with cv2.warpAffine; constant padding keeps edges clean."""
     h, w = img.shape[:2]
     out_h, out_w = output_shape if output_shape is not None else (h, w)
-    return cv2.warpAffine(img.astype(np.float32), matrix.astype(np.float32), (out_w, out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    m = np.array(matrix, dtype=np.float32)
+    return cv2.warpAffine(img, m, (out_w, out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
 
 
 def translate(img, tx: float, ty: float):
@@ -18,7 +19,7 @@ def translate(img, tx: float, ty: float):
 
 
 def scale(img, sx: float, sy: float):
-    """Scale width/height by sx, sy with cv2.resize. Caps output pixels at MAX_OUTPUT_PIXELS to avoid huge arrays. Falls back to bilinear interpolation. Uses float32 for consistent math."""
+    """Scale width/height by sx, sy with cv2.resize (bilinear); caps huge outputs."""
     new_w = max(1, int(round(img.shape[1] * sx)))
     new_h = max(1, int(round(img.shape[0] * sy)))
     pixels = new_w * new_h
@@ -26,15 +27,15 @@ def scale(img, sx: float, sy: float):
         factor = (MAX_OUTPUT_PIXELS / pixels) ** 0.5
         new_w = max(1, int(round(img.shape[1] * sx * factor)))
         new_h = max(1, int(round(img.shape[0] * sy * factor)))
-    return cv2.resize(img.astype(np.float32), (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+    return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
 
 def rotate(img, angle_deg: float):
-    """Rotate around the center by angle_deg degrees. Builds a cv2 rotation matrix and warps with bilinear sampling. Keeps the original canvas size. Uses replicate padding for edges."""
+    """Rotate around center by angle_deg using cv2.getRotationMatrix2D + warpAffine."""
     h, w = img.shape[:2]
     center = (w / 2.0, h / 2.0)
     mat = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
-    return cv2.warpAffine(img.astype(np.float32), mat, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    return cv2.warpAffine(img, mat, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
 
 
 def shear_x(img, shx: float):

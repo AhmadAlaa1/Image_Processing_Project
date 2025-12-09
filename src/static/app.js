@@ -172,7 +172,8 @@ async function sendAction(action, params = {}) {
         compInfo.textContent = `Compression ratio: ${data.extra.ratio.toFixed(2)}${sizeLine}${downscaleNote}`;
       }
       if (data.extra.threshold !== undefined) {
-        histInfo.textContent = `Binary threshold: ${data.extra.threshold.toFixed(2)}`;
+        const note = data.extra.threshold_eval ? `\nNote: ${data.extra.threshold_eval}` : "";
+        histInfo.textContent = `Binary threshold: ${data.extra.threshold.toFixed(2)}${note}`;
       }
     }
     if (originalInfo) {
