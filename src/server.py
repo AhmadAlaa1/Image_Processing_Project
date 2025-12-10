@@ -132,13 +132,17 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         method = act.split("_", 1)[1]
         new_w = int(params.get("width", gray.shape[1]))
         new_h = int(params.get("height", gray.shape[0]))
+        resized = None
         if method == "nearest":
-            return interp.nearest(gray, new_width=new_w, new_height=new_h), extra
+            resized = interp.nearest(gray, new_width=new_w, new_height=new_h)
         if method == "bilinear":
-            return interp.bilinear(gray, new_width=new_w, new_height=new_h), extra
+            resized = interp.bilinear(gray, new_width=new_w, new_height=new_h)
         if method == "bicubic":
-            return interp.bicubic(gray, new_width=new_w, new_height=new_h), extra
-        return interp.bilinear(gray, new_width=new_w, new_height=new_h), extra
+            resized = interp.bicubic(gray, new_width=new_w, new_height=new_h)
+        if resized is None:
+            resized = interp.bilinear(gray, new_width=new_w, new_height=new_h)
+        extra["encoded_preview"] = f"Resize ({method}) preview: {_matrix_preview(resized, round_to=2)}"
+        return resized, extra
     if act == "crop":
         return basic_ops.crop(img, int(params.get("x", 0)), int(params.get("y", 0)),
                               int(params.get("w", img.shape[1])), int(params.get("h", img.shape[0]))), extra

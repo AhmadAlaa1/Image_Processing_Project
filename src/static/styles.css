@@ -141,6 +141,12 @@ pre {
   overflow: auto;
   max-height: 160px;
 }
+#encodedOutput {
+  max-height: 120px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 canvas#histCanvas {
   width: 100%;
   border: 1px solid #1f2632;
@@ -149,7 +155,6 @@ canvas#histCanvas {
   margin-top: 6px;
 }
 .encoded-box { width: 100%; margin-top: 10px; }
-#encodedOutput { max-height: 120px; }
 @media (max-width: 1100px) {
   .workspace { grid-template-columns: 1fr; }
   .column.side { flex-direction: row; flex-wrap: wrap; }
