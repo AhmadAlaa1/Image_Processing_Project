@@ -14,18 +14,37 @@ def ensure_grayscale(img):
     return rgb_to_grayscale(img)
 
 
-def grayscale_to_binary(img):
-    """Binary mask using mean threshold plus a quick optimality check."""
+def grayscale_to_binary(img, threshold=None):
+    """Binary mask using manual threshold (if provided) or image mean, with a quick optimality check."""
     gray = ensure_grayscale(img)
-    t = float(gray.mean())
-    _, binary = cv2.threshold(gray, t, 255, cv2.THRESH_BINARY)
     gray_u8 = cv2.convertScaleAbs(gray)
+
+    manual = threshold is not None
+    clipped = False
+    if manual:
+        try:
+            t = float(threshold)
+        except (TypeError, ValueError):
+            manual = False
+            t = float(gray.mean())
+        else:
+            if t < 0 or t > 255:
+                t = float(np.clip(t, 0, 255))
+                clipped = True
+    else:
+        t = float(gray.mean())
+
+    _, binary = cv2.threshold(gray, t, 255, cv2.THRESH_BINARY)
     otsu_t, _ = cv2.threshold(gray_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     diff = abs(t - float(otsu_t))
-    if diff < 5:
-        eval_note = f"Threshold looks optimal (mean≈Otsu, diff={diff:.1f})."
+    if manual:
+        clip_note = " (clipped to [0,255])" if clipped else ""
+        eval_note = f"Manual threshold{clip_note}; Otsu suggests {otsu_t:.1f} (diff={diff:.1f})."
     else:
-        eval_note = f"Threshold likely suboptimal (mean vs Otsu diff={diff:.1f}); consider Otsu."
+        if diff < 5:
+            eval_note = f"Threshold looks optimal (mean≈Otsu, diff={diff:.1f})."
+        else:
+            eval_note = f"Threshold likely suboptimal (mean vs Otsu diff={diff:.1f}); consider Otsu."
     return binary, t, eval_note
 
 

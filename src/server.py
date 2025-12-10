@@ -14,6 +14,26 @@ COMPRESSION_MAX_PIXELS = 200_000
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 
+# ---------- Preview helpers ---------- #
+def _matrix_preview(arr, max_rows: int = 4, max_cols: int = 8, round_to: int | None = 0) -> str:
+    """Compact text preview of a matrix or vector."""
+    a = np.asarray(arr)
+    if a.size == 0:
+        return "[]"
+    if round_to is not None and np.issubdtype(a.dtype, np.floating):
+        a = np.round(a, round_to)
+    if a.ndim == 1:
+        clip = min(max_cols, a.size)
+        vals = a[:clip].tolist()
+        suffix = "..." if a.size > clip else ""
+        return f"shape={a.shape}, first {clip}: {vals}{suffix}"
+    rows = min(max_rows, a.shape[0])
+    cols = min(max_cols, a.shape[1])
+    preview = a[:rows, :cols].tolist()
+    suffix = "..." if (a.shape[0] > rows or a.shape[1] > cols) else ""
+    return f"shape={a.shape}, top-left {rows}x{cols}: {preview}{suffix}"
+
+
 # ---------- Helpers ---------- #
 def _decode_image(data_url: str, max_dim: int | None = 1600) -> tuple[np.ndarray, dict]:
     """Decode base64 data URL to RGB float32 numpy array, with optional downscale for performance."""
@@ -61,9 +81,18 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if act == "grayscale":
         return gray, extra
     if act == "binary":
-        binary, t, note = basic_ops.grayscale_to_binary(gray)
+        raw_t = params.get("threshold")
+        parsed_t = None
+        if raw_t not in (None, "", "auto"):
+            try:
+                parsed_t = float(raw_t)
+                extra["threshold_requested"] = parsed_t
+            except (TypeError, ValueError):
+                extra["threshold_error"] = "Invalid threshold; defaulted to mean."
+        binary, t, note = basic_ops.grayscale_to_binary(gray, threshold=parsed_t)
         extra["threshold"] = t
         extra["threshold_eval"] = note
+        extra["threshold_mode"] = "manual" if parsed_t is not None else "mean"
         return binary, extra
     if act == "translate":
         tx = float(params.get("tx", 0))
@@ -151,49 +180,67 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         data = compress.huffman_compress(gray)
         recon = compress.huffman_decompress(data["bitstring"], data["tree"], gray.shape)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        bitstring = data["bitstring"]
+        extra["encoded_preview"] = f"Huffman bitstring len={len(bitstring)}: {bitstring[:96]}{'...' if len(bitstring) > 96 else ''}"
         return recon, extra
     if act == "golomb":
         data = compress.golomb_rice_encode(gray, k=2)
         recon = compress.golomb_rice_decode(data["bitstring"], gray.shape, k=2)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        bitstring = data["bitstring"]
+        extra["encoded_preview"] = f"Golomb-Rice bitstring len={len(bitstring)}: {bitstring[:96]}{'...' if len(bitstring) > 96 else ''}"
         return recon, extra
     if act == "arithmetic":
         data = compress.arithmetic_encode(gray)
         recon = compress.arithmetic_decode(data.get("code"), data)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        extra["encoded_preview"] = f"Arithmetic-coded estimate, {_matrix_preview(recon, round_to=2)}"
         return recon, extra
     if act == "lzw":
         data = compress.lzw_encode(gray)
         recon = compress.lzw_decode(data["codes"], gray.shape)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        codes = data["codes"]
+        clip = min(len(codes), 32)
+        extra["encoded_preview"] = f"LZW codes len={len(codes)}, first {clip}: {codes[:clip]}{'...' if len(codes) > clip else ''}"
         return recon, extra
     if act == "rle":
         data = compress.rle_encode(gray)
         recon = compress.rle_decode(data["pairs"], gray.shape)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        pairs = data["pairs"]
+        clip = min(len(pairs), 12)
+        extra["encoded_preview"] = f"RLE pairs count={len(pairs)}, first {clip}: {pairs[:clip]}{'...' if len(pairs) > clip else ''}"
         return recon, extra
     if act == "symbol":
         data = compress.symbol_based_encode(gray)
         recon = compress.symbol_based_decode(data["bitstring"], data["codes"], gray.shape)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        bitstring = data["bitstring"]
+        extra["encoded_preview"] = f"Symbol bitstring len={len(bitstring)}: {bitstring[:96]}{'...' if len(bitstring) > 96 else ''}"
         return recon, extra
     if act == "bitplane":
         planes, recon = compress.bit_planes(gray)
         extra["planes"] = [p.tolist() for p in planes]
+        extra["encoded_preview"] = f"Bit-plane 0: {_matrix_preview(planes[0], round_to=0)}"
         return recon, extra
     if act == "dct":
         data = compress.dct_compress(gray)
         extra.update({"ratio": data["ratio"], "kept": data["kept_coefficients"], "total": data["total_coefficients"], "original_bits": data.get("original_bits"), "compressed_bits": data.get("compressed_bits")})
+        if data.get("threshold") is not None:
+            extra["encoded_preview"] = f"DCT kept {data['kept_coefficients']}/{data['total_coefficients']} coeffs; threshold {data['threshold']:.2f}"
         return data["image"], extra
     if act == "predictive":
         data = compress.predictive_encode(gray)
         recon = compress.predictive_decode(data["residual"])
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
+        extra["encoded_preview"] = f"Residual preview: {_matrix_preview(data['residual'], round_to=None)}"
         return recon, extra
     if act == "wavelet":
         approx, horiz, vert, diag, orig_shape = compress.haar_wavelet_transform(gray)
         recon = compress.haar_wavelet_inverse(approx, horiz, vert, diag, original_shape=orig_shape)
         extra.update({"approx_shape": list(approx.shape)})
+        extra["encoded_preview"] = f"Haar approx: {_matrix_preview(approx, round_to=2)}"
         return recon, extra
 
     raise ValueError(f"Unknown action: {action}")

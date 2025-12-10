@@ -7,6 +7,7 @@ const histInfo = document.getElementById("histInfo");
 const compInfo = document.getElementById("compInfo");
 const infoBox = document.getElementById("info");
 const fileMeta = document.getElementById("fileMeta");
+const encodedOutput = document.getElementById("encodedOutput");
 const histCanvas = document.getElementById("histCanvas");
 let histCtx = histCanvas?.getContext("2d");
 let imageDataUrl = null;
@@ -114,6 +115,10 @@ function clearHistogram() {
   histInfo.textContent = "";
 }
 
+function clearEncodedOutput() {
+  if (encodedOutput) encodedOutput.textContent = "—";
+}
+
 function resetToOriginal() {
   if (!originalImg.src) {
     setStatus("Load an image first.", true);
@@ -127,6 +132,7 @@ function resetToOriginal() {
   clearHistogram();
   compInfo.textContent = "";
   infoBox.textContent = "";
+  clearEncodedOutput();
   setStatus("Reset to original image.");
 }
 
@@ -138,6 +144,7 @@ async function sendAction(action, params = {}) {
   setStatus(`Processing: ${action}...`);
   clearHistogram();
   compInfo.textContent = "";
+  clearEncodedOutput();
   try {
     const res = await fetch("/api/process", {
       method: "POST",
@@ -172,8 +179,17 @@ async function sendAction(action, params = {}) {
         compInfo.textContent = `Compression ratio: ${data.extra.ratio.toFixed(2)}${sizeLine}${downscaleNote}`;
       }
       if (data.extra.threshold !== undefined) {
+        const mode = data.extra.threshold_mode === "manual" ? "manual" : "mean";
+        const requested = data.extra.threshold_requested;
+        const requestedNote = requested !== undefined && Math.abs(requested - data.extra.threshold) > 1e-3
+          ? ` (requested ${requested.toFixed(2)})`
+          : "";
         const note = data.extra.threshold_eval ? `\nNote: ${data.extra.threshold_eval}` : "";
-        histInfo.textContent = `Binary threshold: ${data.extra.threshold.toFixed(2)}${note}`;
+        const err = data.extra.threshold_error ? `\nWarning: ${data.extra.threshold_error}` : "";
+        histInfo.textContent = `Binary threshold (${mode}): ${data.extra.threshold.toFixed(2)}${requestedNote}${note}${err}`;
+      }
+      if (data.extra.encoded_preview !== undefined) {
+        if (encodedOutput) encodedOutput.textContent = data.extra.encoded_preview || "—";
       }
     }
     if (originalInfo) {
@@ -206,6 +222,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
     infoBox.textContent = "";
     clearHistogram();
     compInfo.textContent = "";
+    clearEncodedOutput();
     setStatus("Image loaded.");
   } catch (err) {
     console.error(err);
@@ -259,7 +276,15 @@ document.querySelectorAll("button[data-action]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const action = btn.dataset.action;
     const params = {};
-    if (action === "translate") {
+    if (action === "binary") {
+      const raw = document.getElementById("binaryThreshold")?.value;
+      if (raw !== "" && raw !== undefined) {
+        const parsed = parseFloat(raw);
+        if (Number.isFinite(parsed)) {
+          params.threshold = parsed;
+        }
+      }
+    } else if (action === "translate") {
       params.tx = parseFloat(document.getElementById("tx").value);
       params.ty = parseFloat(document.getElementById("ty").value);
     } else if (action === "scale") {
