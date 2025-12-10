@@ -141,7 +141,22 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
             resized = interp.bicubic(gray, new_width=new_w, new_height=new_h)
         if resized is None:
             resized = interp.bilinear(gray, new_width=new_w, new_height=new_h)
-        extra["encoded_preview"] = f"Resize ({method}) preview: {_matrix_preview(resized, round_to=2)}"
+
+        diff_note = ""
+        if method in {"bilinear", "bicubic"}:
+            bilinear_out = interp.bilinear(gray, new_width=new_w, new_height=new_h)
+            bicubic_out = interp.bicubic(gray, new_width=new_w, new_height=new_h)
+            diff = bicubic_out - bilinear_out
+            mean_abs = float(np.mean(np.abs(diff))) if diff.size else 0.0
+            max_abs = float(np.max(np.abs(diff))) if diff.size else 0.0
+            extra["resize_diff"] = {
+                "mean_abs": mean_abs,
+                "max_abs": max_abs,
+                "preview": _matrix_preview(diff, round_to=3),
+            }
+            diff_note = f" | bilinear vs bicubic: mean|Δ|={mean_abs:.3f}, max|Δ|={max_abs:.3f}"
+
+        extra["encoded_preview"] = f"Resize ({method}) preview: {_matrix_preview(resized, round_to=2)}{diff_note}"
         return resized, extra
     if act == "crop":
         return basic_ops.crop(gray, int(params.get("x", 0)), int(params.get("y", 0)),
