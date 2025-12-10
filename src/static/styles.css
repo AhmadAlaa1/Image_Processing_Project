@@ -68,10 +68,28 @@ body {
   box-shadow: 0 12px 30px rgba(0,0,0,0.25);
 }
 .pane.hero.center { width: 100%; max-width: 820px; display: flex; flex-direction: column; align-items: center; }
-.pane.hero img#stageImage { width: 100%; max-height: 520px; object-fit: contain; background: #0f1117; border-radius: 10px; border: 1px solid #1f2632; }
+.stage-image-wrapper {
+  width: 100%;
+  max-height: 540px;
+  overflow: auto;
+  background: #0f1117;
+  border-radius: 10px;
+  border: 1px solid #1f2632;
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+}
+.pane.hero img#stageImage {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  transform-origin: center top;
+  transition: transform 0.15s ease;
+}
+.stage-image-wrapper.panning { cursor: grabbing; }
 .pane-head { display: flex; width: 100%; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .stage-meta h3 { margin: 0; }
-.stage-controls { display: flex; gap: 8px; }
+.stage-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pill {
   border: 1px solid #2c3444;
   background: #212734;
@@ -83,6 +101,8 @@ body {
 .pill.active { background: #2563eb; color: white; border-color: #2563eb; }
 .pill.danger { border-color: #4b1e2c; background: #2b1a1f; color: #fca5a5; }
 .pill.danger:hover { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+.zoom-controls { display: flex; align-items: center; gap: 6px; }
+.zoom-label { cursor: default; padding: 8px 10px; }
 .stage-footer { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 8px; color: #cbd5e1; font-size: 13px; }
 .filename { color: #9ca3af; font-size: 13px; }
 .status { color: #10b981; font-weight: 700; font-size: 13px; }

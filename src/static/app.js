@@ -9,10 +9,20 @@ const infoBox = document.getElementById("info");
 const fileMeta = document.getElementById("fileMeta");
 const encodedOutput = document.getElementById("encodedOutput");
 const histCanvas = document.getElementById("histCanvas");
+const stageWrapper = document.querySelector(".stage-image-wrapper");
 let histCtx = histCanvas?.getContext("2d");
 let imageDataUrl = null;
 let lastMode = "processed"; // or "original"
 let originalInfo = null; // { width, height, size, type }
+let zoomLevel = 1;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.25;
+let isPanning = false;
+let panStart = { x: 0, y: 0, scrollLeft: 0, scrollTop: 0 };
+const zoomLabel = document.getElementById("zoomLabel");
+const zoomInBtn = document.getElementById("zoomInBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
 
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
@@ -119,6 +129,50 @@ function clearEncodedOutput() {
   if (encodedOutput) encodedOutput.textContent = "—";
 }
 
+function updateZoomLabel() {
+  if (zoomLabel) zoomLabel.textContent = `${Math.round(zoomLevel * 100)}%`;
+}
+
+function applyZoom() {
+  stageImage.style.transform = `scale(${zoomLevel})`;
+  updateZoomLabel();
+}
+
+function enablePan() {
+  if (!stageWrapper) return;
+  stageWrapper.addEventListener("mousedown", (e) => {
+    isPanning = true;
+    panStart = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: stageWrapper.scrollLeft,
+      scrollTop: stageWrapper.scrollTop,
+    };
+    stageWrapper.classList.add("panning");
+  });
+  window.addEventListener("mouseup", () => {
+    isPanning = false;
+    stageWrapper?.classList.remove("panning");
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!isPanning || !stageWrapper) return;
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    stageWrapper.scrollLeft = panStart.scrollLeft - dx;
+    stageWrapper.scrollTop = panStart.scrollTop - dy;
+  });
+}
+
+function setZoom(value) {
+  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+  applyZoom();
+}
+
+function resetZoom() {
+  zoomLevel = 1;
+  applyZoom();
+}
+
 function resetToOriginal() {
   if (!originalImg.src) {
     setStatus("Load an image first.", true);
@@ -133,6 +187,7 @@ function resetToOriginal() {
   compInfo.textContent = "";
   infoBox.textContent = "";
   clearEncodedOutput();
+  resetZoom();
   setStatus("Reset to original image.");
 }
 
@@ -223,6 +278,7 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
     clearHistogram();
     compInfo.textContent = "";
     clearEncodedOutput();
+    resetZoom();
     setStatus("Image loaded.");
   } catch (err) {
     console.error(err);
@@ -270,6 +326,17 @@ const resetBtn = document.getElementById("resetBtn");
 if (resetBtn) {
   resetBtn.addEventListener("click", resetToOriginal);
 }
+
+if (zoomInBtn && zoomOutBtn) {
+  zoomInBtn.addEventListener("click", () => setZoom(zoomLevel + ZOOM_STEP));
+  zoomOutBtn.addEventListener("click", () => setZoom(zoomLevel - ZOOM_STEP));
+  updateZoomLabel();
+}
+
+if (stageImage) {
+  stageImage.draggable = false;
+}
+enablePan();
 
 // Wire buttons
 document.querySelectorAll("button[data-action]").forEach((btn) => {

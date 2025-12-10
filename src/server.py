@@ -97,37 +97,37 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
     if act == "translate":
         tx = float(params.get("tx", 0))
         ty = float(params.get("ty", 0))
-        return geometry.translate(img, tx, ty), extra
+        return geometry.translate(gray, tx, ty), extra
     if act == "scale":
         sx = float(params.get("sx", 1))
         sy = float(params.get("sy", 1))
         # Guard overly large outputs by auto-adjusting scale.
-        target_w = max(1, int(round(img.shape[1] * sx)))
-        target_h = max(1, int(round(img.shape[0] * sy)))
+        target_w = max(1, int(round(gray.shape[1] * sx)))
+        target_h = max(1, int(round(gray.shape[0] * sy)))
         target_pixels = target_w * target_h
         limit = geometry.MAX_OUTPUT_PIXELS
         if target_pixels > limit:
             factor = (limit / target_pixels) ** 0.5
             sx *= factor
             sy *= factor
-            adj_w = max(1, int(round(img.shape[1] * sx)))
-            adj_h = max(1, int(round(img.shape[0] * sy)))
+            adj_w = max(1, int(round(gray.shape[1] * sx)))
+            adj_h = max(1, int(round(gray.shape[0] * sy)))
             extra["scale_adjusted"] = {
                 "requested": (target_w, target_h),
                 "adjusted": (adj_w, adj_h),
                 "factor": round(factor, 3),
                 "max_pixels": limit,
             }
-        return geometry.scale(img, sx, sy), extra
+        return geometry.scale(gray, sx, sy), extra
     if act == "rotate":
         angle = float(params.get("angle", 0))
-        return geometry.rotate(img, angle), extra
+        return geometry.rotate(gray, angle), extra
     if act == "shear_x":
         shx = float(params.get("shx", 0.2))
-        return geometry.shear_x(img, shx), extra
+        return geometry.shear_x(gray, shx), extra
     if act == "shear_y":
         shy = float(params.get("shy", 0.2))
-        return geometry.shear_y(img, shy), extra
+        return geometry.shear_y(gray, shy), extra
     if act.startswith("resize_"):
         method = act.split("_", 1)[1]
         new_w = int(params.get("width", gray.shape[1]))
@@ -144,8 +144,8 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         extra["encoded_preview"] = f"Resize ({method}) preview: {_matrix_preview(resized, round_to=2)}"
         return resized, extra
     if act == "crop":
-        return basic_ops.crop(img, int(params.get("x", 0)), int(params.get("y", 0)),
-                              int(params.get("w", img.shape[1])), int(params.get("h", img.shape[0]))), extra
+        return basic_ops.crop(gray, int(params.get("x", 0)), int(params.get("y", 0)),
+                              int(params.get("w", gray.shape[1])), int(params.get("h", gray.shape[0]))), extra
     if act == "histogram":
         hist = basic_ops.histogram(gray)
         extra["histogram"] = hist.tolist()

@@ -102,9 +102,16 @@
               <button id="showOriginalBtn" class="pill">Original</button>
               <button id="showProcessedBtn" class="pill active">Processed</button>
               <button id="resetBtn" class="pill danger">Reset</button>
+              <div class="zoom-controls">
+                <button id="zoomOutBtn" class="pill">−</button>
+                <span id="zoomLabel" class="pill zoom-label">100%</span>
+                <button id="zoomInBtn" class="pill">+</button>
+              </div>
             </div>
           </div>
-          <img id="stageImage" alt="stage" />
+          <div class="stage-image-wrapper">
+            <img id="stageImage" alt="stage" />
+          </div>
           <div class="stage-footer">
             <span id="status" class="status">Ready</span>
             <div class="meta-info">
