@@ -133,29 +133,142 @@ def golomb_rice_decode(bitstring: str, shape, k: int = 2):
 
 # ---------------- Arithmetic Coding (entropy-estimate demo) ---------------- #
 def arithmetic_encode(img):
+    """Binary arithmetic coding for 8-bit grayscale."""
     gray = _to_gray_uint8(img)
     data = gray.ravel().tolist()
-    freq = Counter(data)
-    total = sum(freq.values())
-    # entropy estimate for ratio (bits per symbol)
-    import math
-    entropy = -sum((f / total) * math.log2(f / total) for f in freq.values() if f > 0)
+    if not data:
+        return {"code": "", "bitstring": "", "ratio": 0.0, "original_bits": 0, "compressed_bits": 0, "shape": gray.shape, "freq": [0] * 256, "length": 0}
+
+    # Static model from symbol frequencies
+    freq = np.bincount(data, minlength=256).astype(int)
+    total = int(freq.sum())
+    cumulative = [0]
+    for f in freq:
+        cumulative.append(cumulative[-1] + int(f))
+
+    TOP = 1 << 32
+    HALF = TOP >> 1
+    FIRST_QTR = HALF >> 1
+    THIRD_QTR = FIRST_QTR * 3
+
+    low, high = 0, TOP - 1
+    bits = []
+    bits_to_follow = 0
+
+    def _output_bit(bit):
+        bits.append("1" if bit else "0")
+        complement = "0" if bit else "1"
+        if bits_to_follow:
+            bits.extend(complement * bits_to_follow)
+
+    for sym in data:
+        rng = high - low + 1
+        high = low + (rng * cumulative[sym + 1] // total) - 1
+        low = low + (rng * cumulative[sym] // total)
+
+        while True:
+            if high < HALF:
+                _output_bit(0)
+                bits_to_follow = 0
+            elif low >= HALF:
+                _output_bit(1)
+                bits_to_follow = 0
+                low -= HALF
+                high -= HALF
+            elif low >= FIRST_QTR and high < THIRD_QTR:
+                bits_to_follow += 1
+                low -= FIRST_QTR
+                high -= FIRST_QTR
+            else:
+                break
+            low = low * 2
+            high = high * 2 + 1
+
+    # Final bit flush
+    final_bit = 0 if low < FIRST_QTR else 1
+    _output_bit(final_bit)
+
+    bitstring = "".join(bits)
     original_bits = len(data) * 8
-    compressed_bits = max(1, int(entropy * len(data)))
-    ratio = _compression_ratio(original_bits, compressed_bits)
-    original_bits = len(data) * 8
+    compressed_bits = len(bitstring)
     return {
-        "ratio": ratio,
+        "code": bitstring,
+        "bitstring": bitstring,
+        "ratio": _compression_ratio(original_bits, compressed_bits),
         "original_bits": original_bits,
         "compressed_bits": compressed_bits,
         "shape": gray.shape,
-        "reconstructed": gray,
+        "freq": freq.tolist(),
+        "length": len(data),
     }
 
 
 def arithmetic_decode(code, meta):
-    # Identity reconstruction for demo
-    return meta["reconstructed"]
+    """Decode arithmetic-coded bitstring using stored frequency model."""
+    bitstring = code or ""
+    freq = meta.get("freq", [0] * 256)
+    total_symbols = int(meta.get("length", 0))
+    shape = meta.get("shape", (0, 0))
+    if total_symbols == 0:
+        return np.zeros(shape, dtype=np.uint8)
+
+    cumulative = [0]
+    for f in freq:
+        cumulative.append(cumulative[-1] + int(f))
+    total = cumulative[-1]
+
+    TOP = 1 << 32
+    HALF = TOP >> 1
+    FIRST_QTR = HALF >> 1
+    THIRD_QTR = FIRST_QTR * 3
+
+    def next_bit(idx):
+        return 1 if (idx < len(bitstring) and bitstring[idx] == "1") else 0
+
+    # Prime the decoder with 32 bits
+    value = 0
+    for i in range(32):
+        value = (value << 1) | next_bit(i)
+    bit_idx = 32
+    low, high = 0, TOP - 1
+    output = []
+
+    for _ in range(total_symbols):
+        rng = high - low + 1
+        scaled = ((value - low + 1) * total - 1) // rng
+
+        # Find symbol: cumulative[s] <= scaled < cumulative[s+1]
+        sym = 0
+        # Small linear search is fine for 256 symbols
+        for s in range(256):
+            if cumulative[s] <= scaled < cumulative[s + 1]:
+                sym = s
+                break
+
+        output.append(sym)
+        high = low + (rng * cumulative[sym + 1] // total) - 1
+        low = low + (rng * cumulative[sym] // total)
+
+        while True:
+            if high < HALF:
+                pass
+            elif low >= HALF:
+                low -= HALF
+                high -= HALF
+                value -= HALF
+            elif low >= FIRST_QTR and high < THIRD_QTR:
+                low -= FIRST_QTR
+                high -= FIRST_QTR
+                value -= FIRST_QTR
+            else:
+                break
+            low = low * 2
+            high = high * 2 + 1
+            value = value * 2 + next_bit(bit_idx)
+            bit_idx += 1
+
+    arr = np.array(output, dtype=np.uint8)
+    return arr[: shape[0] * shape[1]].reshape(shape)
 
 
 # ---------------- LZW Coding ---------------- #

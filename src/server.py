@@ -213,7 +213,8 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         data = compress.arithmetic_encode(gray)
         recon = compress.arithmetic_decode(data.get("code"), data)
         extra.update({"ratio": data["ratio"], "original_bits": data["original_bits"], "compressed_bits": data["compressed_bits"]})
-        extra["encoded_preview"] = f"Arithmetic-coded estimate, {_matrix_preview(recon, round_to=2)}"
+        bitstring = data.get("code", "")
+        extra["encoded_preview"] = f"Arithmetic code len={len(bitstring)}: {bitstring[:96]}{'...' if len(bitstring) > 96 else ''}"
         return recon, extra
     if act == "lzw":
         data = compress.lzw_encode(gray)
