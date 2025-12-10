@@ -167,6 +167,23 @@ pre {
   word-break: break-word;
   overflow-wrap: anywhere;
 }
+.basis-wrapper {
+  margin-top: 6px;
+  width: 100%;
+  border: 1px solid #1f2632;
+  border-radius: 10px;
+  background: #10131a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 6px;
+}
+.basis-wrapper img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #2c3444;
+}
 canvas#histCanvas {
   width: 100%;
   border: 1px solid #1f2632;

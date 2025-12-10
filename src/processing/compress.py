@@ -290,10 +290,12 @@ def lzw_encode(img):
             w = bytes([k])
     codes.append(dictionary[w])
     original_bits = len(data) * 8
-    compressed_bits = len(codes) * math.ceil(math.log2(dict_size + 1))
+    bits_len = math.ceil(math.log2(dict_size + 1))
+    compressed_bits = len(codes) * bits_len
     return {
         "codes": codes,
         "dict_size": dict_size,
+        "bits_len": bits_len,
         "ratio": _compression_ratio(original_bits, compressed_bits),
         "original_bits": original_bits,
         "compressed_bits": compressed_bits,
@@ -443,6 +445,41 @@ def dct_compress(img, keep_ratio: float = 0.5):
         "compressed_bits": compressed_bits,
     }
 
+
+def dct_basis_grid(tile_size: int = 24):
+    """Generate a tiled 8x8 DCT basis visualization."""
+    tile = max(8, int(tile_size))
+    grid = np.zeros((8 * tile, 8 * tile), dtype=np.float32)
+    for v in range(8):
+        for u in range(8):
+            coeff = np.zeros((8, 8), dtype=np.float32)
+            coeff[v, u] = 1.0
+            basis = cv2.idct(coeff)
+            # Normalize to 0-255 for visualization
+            basis_norm = basis - basis.min()
+            if basis_norm.max() > 0:
+                basis_norm = basis_norm / basis_norm.max()
+            basis_norm = (basis_norm * 255.0).astype(np.float32)
+            block = cv2.resize(basis_norm, (tile, tile), interpolation=cv2.INTER_NEAREST)
+            y0, x0 = v * tile, u * tile
+            grid[y0:y0 + tile, x0:x0 + tile] = block
+    return grid
+
+
+def bitstring_preview_image(bitstring: str, width: int = 64, max_rows: int = 64):
+    """Convert leading bits to a small black/white image for visualization."""
+    bits = (bitstring or "")
+    if len(bits) == 0:
+        return np.zeros((1, width), dtype=np.float32)
+    max_bits = width * max_rows
+    bits = bits[:max_bits]
+    rows = math.ceil(len(bits) / width)
+    rows = min(rows, max_rows)
+    padded = bits.ljust(rows * width, "0")
+    arr = np.frombuffer(padded.encode("ascii"), dtype=np.uint8)
+    arr = (arr - ord("0")).astype(np.uint8) * 255
+    img = arr.reshape(rows, width).astype(np.float32)
+    return img
 
 # ---------------- Predictive coding (DPCM) ---------------- #
 def predictive_encode(img):

@@ -249,6 +249,10 @@ def _process_request(img: np.ndarray, action: str, params: dict, decode_meta: di
         extra.update({"ratio": data["ratio"], "kept": data["kept_coefficients"], "total": data["total_coefficients"], "original_bits": data.get("original_bits"), "compressed_bits": data.get("compressed_bits")})
         if data.get("threshold") is not None:
             extra["encoded_preview"] = f"DCT kept {data['kept_coefficients']}/{data['total_coefficients']} coeffs; threshold {data['threshold']:.2f}"
+        # Show a tiny text summary for encoded coefficients
+        extra["encoded_bits_summary"] = f"Kept coeffs: {data['kept_coefficients']} / {data['total_coefficients']}, est bits: {data['compressed_bits']}"
+        basis_grid = compress.dct_basis_grid()
+        extra["basis_preview"] = _encode_image(basis_grid)
         return data["image"], extra
     if act == "predictive":
         data = compress.predictive_encode(gray)

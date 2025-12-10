@@ -18,8 +18,8 @@ def ensure_uint8(img):
 
 
 def info(img):
-    """Return basic image info."""
+    """Return basic image info including byte size."""
     h, w = img.shape[:2]
     channels = 1 if img.ndim == 2 else img.shape[2]
     dtype = str(img.dtype)
-    return {"width": w, "height": h, "channels": channels, "dtype": dtype}
+    return {"width": w, "height": h, "channels": channels, "dtype": dtype, "byte_size": int(img.nbytes)}

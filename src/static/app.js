@@ -8,6 +8,7 @@ const compInfo = document.getElementById("compInfo");
 const infoBox = document.getElementById("info");
 const fileMeta = document.getElementById("fileMeta");
 const encodedOutput = document.getElementById("encodedOutput");
+const basisPreview = document.getElementById("basisPreview");
 const histCanvas = document.getElementById("histCanvas");
 const stageWrapper = document.querySelector(".stage-image-wrapper");
 let histCtx = histCanvas?.getContext("2d");
@@ -127,6 +128,7 @@ function clearHistogram() {
 
 function clearEncodedOutput() {
   if (encodedOutput) encodedOutput.textContent = "—";
+  if (basisPreview) basisPreview.src = "";
 }
 
 function updateZoomLabel() {
@@ -217,7 +219,8 @@ async function sendAction(action, params = {}) {
     }
     if (data.info) {
       const i = data.info;
-      infoBox.textContent = `${i.width}x${i.height}, channels: ${i.channels}, dtype: ${i.dtype}`;
+      const sizeLine = i.byte_size !== undefined ? `, size: ${formatBytes(i.byte_size)}` : "";
+      infoBox.textContent = `${i.width}x${i.height}, channels: ${i.channels}, dtype: ${i.dtype}${sizeLine}`;
     }
     if (data.extra) {
       if (data.extra.histogram) {
@@ -231,7 +234,8 @@ async function sendAction(action, params = {}) {
         const sizeLine = hasSizes ? ` (${formatBits(ob)} -> ${formatBits(cb)})` : "";
         const downscaled = data.extra.compression_downscaled_from;
         const downscaleNote = downscaled ? ` | Downscaled from ${downscaled[0]}x${downscaled[1]} for compression` : "";
-        compInfo.textContent = `Compression ratio: ${data.extra.ratio.toFixed(2)}${sizeLine}${downscaleNote}`;
+        const processedSize = data.info && data.info.byte_size !== undefined ? ` | Processed size: ${formatBytes(data.info.byte_size)}` : "";
+        compInfo.textContent = `Compression ratio: ${data.extra.ratio.toFixed(2)}${sizeLine}${downscaleNote}${processedSize}`;
       }
       if (data.extra.threshold !== undefined) {
         const mode = data.extra.threshold_mode === "manual" ? "manual" : "mean";
@@ -245,6 +249,15 @@ async function sendAction(action, params = {}) {
       }
       if (data.extra.encoded_preview !== undefined) {
         if (encodedOutput) encodedOutput.textContent = data.extra.encoded_preview || "—";
+      }
+      if (data.extra.encoded_bits_summary) {
+        const existing = encodedOutput.textContent === "—" ? "" : `${encodedOutput.textContent}\n`;
+        encodedOutput.textContent = `${existing}${data.extra.encoded_bits_summary}`;
+      }
+      if (basisPreview) {
+        const basis = data.extra.basis_preview;
+        basisPreview.src = basis || "";
+        basisPreview.style.display = basis ? "block" : "none";
       }
     }
     if (originalInfo) {
